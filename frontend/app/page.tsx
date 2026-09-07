@@ -1,3 +1,5 @@
+import ScheduleSelector from "@/components/ScheduleSelector";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
@@ -74,18 +76,17 @@ export default function Home() {
             </h2>
 
             <p className="mt-3 text-slate-600">
-              Schedule and seat selection will be connected to the backend
-              booking system in the next stages.
+              Choose your travel date and departure time to continue.
             </p>
+
+            <ScheduleSelector />
           </div>
         </div>
       </section>
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-7xl px-4 py-8 text-sm text-slate-500 sm:px-6 lg:px-8">
-          <p>
-            Double-Decker Bus Booking · TDCP Bus Reservation System
-          </p>
+          <p>Double-Decker Bus Booking - TDCP Bus Reservation System</p>
         </div>
       </footer>
     </main>

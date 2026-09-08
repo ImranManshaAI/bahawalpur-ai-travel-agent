@@ -2,6 +2,10 @@
   mockGetScheduleSeats,
   mockGetSchedules,
 } from "@/mocks/api";
+import type {
+  HoldRequest,
+  HoldResponse,
+} from "@/lib/api-types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -98,6 +102,19 @@ export async function getSchedules(date: string) {
  */
 export async function getScheduleSeats(scheduleId: string) {
   return mockGetScheduleSeats(scheduleId);
+}
+
+/**
+ * Backend implementation of:
+ * POST /bookings/hold
+ */
+export async function holdSeats(
+  request: HoldRequest,
+): Promise<HoldResponse> {
+  return apiFetch<HoldResponse>("/bookings/hold", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 export async function apiFetch<T>(

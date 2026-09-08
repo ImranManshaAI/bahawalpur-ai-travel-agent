@@ -1,16 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ScheduleResponse } from "@/lib/api-types";
-import { getSchedules } from "@/lib/api";
+import type {
+  ScheduleResponse,
+  ScheduleSeatsResponse,
+} from "@/lib/api-types";
+import { getScheduleSeats, getSchedules } from "@/lib/api";
+import SeatMap from "@/components/SeatMap";
 
 const DEFAULT_DATE = "2026-09-15";
 
 export default function ScheduleSelector() {
   const [selectedDate, setSelectedDate] = useState(DEFAULT_DATE);
+  const [selectedScheduleId, setSelectedScheduleId] = useState<string | null>(
+    null,
+  );
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
+  const [scheduleSeats, setScheduleSeats] =
+    useState<ScheduleSeatsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSeats, setIsLoadingSeats] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [seatErrorMessage, setSeatErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isActive = true;
@@ -18,6 +29,9 @@ export default function ScheduleSelector() {
     async function loadSchedules() {
       setIsLoading(true);
       setErrorMessage(null);
+      setSelectedScheduleId(null);
+      setScheduleSeats(null);
+      setSeatErrorMessage(null);
 
       try {
         const data = await getSchedules(selectedDate);
@@ -45,6 +59,24 @@ export default function ScheduleSelector() {
       isActive = false;
     };
   }, [selectedDate]);
+
+  async function handleScheduleSelect(scheduleId: string) {
+    setSelectedScheduleId(scheduleId);
+    setScheduleSeats(null);
+    setSeatErrorMessage(null);
+    setIsLoadingSeats(true);
+
+    try {
+      const data = await getScheduleSeats(scheduleId);
+      setScheduleSeats(data);
+    } catch {
+      setSeatErrorMessage(
+        "We couldn't load the seat map. Please try selecting the departure again.",
+      );
+    } finally {
+      setIsLoadingSeats(false);
+    }
+  }
 
   return (
     <div className="mt-8 space-y-8">
@@ -89,12 +121,18 @@ export default function ScheduleSelector() {
             {schedules.map((schedule) => (
               <label
                 key={schedule.id}
-                className="cursor-pointer rounded-xl border border-slate-200 bg-white p-5 transition hover:border-slate-400 hover:shadow-sm focus-within:ring-2 focus-within:ring-slate-950 focus-within:ring-offset-2"
+                className={`cursor-pointer rounded-xl border bg-white p-5 transition hover:border-slate-400 hover:shadow-sm focus-within:ring-2 focus-within:ring-slate-950 focus-within:ring-offset-2 ${
+                  selectedScheduleId === schedule.id
+                    ? "border-slate-950 ring-2 ring-slate-950 ring-offset-2"
+                    : "border-slate-200"
+                }`}
               >
                 <input
                   type="radio"
                   name="departure-time"
                   value={schedule.id}
+                  checked={selectedScheduleId === schedule.id}
+                  onChange={() => void handleScheduleSelect(schedule.id)}
                   className="sr-only"
                 />
 
@@ -121,6 +159,30 @@ export default function ScheduleSelector() {
           </p>
         )}
       </fieldset>
+
+      {selectedScheduleId && (
+        <section aria-labelledby="seat-selection-heading">
+          {isLoadingSeats ? (
+            <div
+              className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600"
+              aria-live="polite"
+            >
+              Loading seat map...
+            </div>
+          ) : seatErrorMessage ? (
+            <div
+              className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800"
+              role="alert"
+            >
+              {seatErrorMessage}
+            </div>
+          ) : scheduleSeats ? (
+            <div id="seat-selection-heading">
+              <SeatMap seats={scheduleSeats.seats} />
+            </div>
+          ) : null}
+        </section>
+      )}
     </div>
   );
 }

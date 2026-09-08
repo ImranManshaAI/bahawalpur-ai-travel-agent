@@ -1,4 +1,8 @@
-import type { ScheduleResponse } from "@/lib/api-types";
+import type {
+  ScheduleResponse,
+  ScheduleSeatsResponse,
+} from "@/lib/api-types";
+import { MOCK_SCHEDULE_SEATS } from "@/mocks/seats";
 
 const MOCK_SCHEDULES: ScheduleResponse[] = [
   {
@@ -27,4 +31,14 @@ const MOCK_SCHEDULES: ScheduleResponse[] = [
 
 export function mockGetSchedules(date: string): ScheduleResponse[] {
   return MOCK_SCHEDULES.filter((schedule) => schedule.date === date);
+}
+
+export function mockGetScheduleSeats(
+  scheduleId: string,
+): ScheduleSeatsResponse {
+  if (scheduleId !== MOCK_SCHEDULE_SEATS.schedule_id) {
+    throw new Error("Schedule not found.");
+  }
+
+  return MOCK_SCHEDULE_SEATS;
 }

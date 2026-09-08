@@ -1,4 +1,7 @@
-﻿import { mockGetSchedules } from "@/mocks/api";
+﻿import {
+  mockGetScheduleSeats,
+  mockGetSchedules,
+} from "@/mocks/api";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
@@ -81,8 +84,20 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body.data;
 }
 
+/**
+ * Mock implementation of:
+ * GET /schedules?date=YYYY-MM-DD
+ */
 export async function getSchedules(date: string) {
   return mockGetSchedules(date);
+}
+
+/**
+ * Mock implementation of:
+ * GET /schedules/{schedule_id}/seats
+ */
+export async function getScheduleSeats(scheduleId: string) {
+  return mockGetScheduleSeats(scheduleId);
 }
 
 export async function apiFetch<T>(

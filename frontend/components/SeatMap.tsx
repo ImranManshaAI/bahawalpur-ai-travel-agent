@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { SeatResponse } from "@/lib/api-types";
 
 interface SeatMapProps {
@@ -19,33 +22,68 @@ const STATUS_STYLES: Record<SeatResponse["status"], string> = {
   reserved: "border-blue-300 bg-blue-50 text-blue-900",
 };
 
-function Seat({ seat }: { seat: SeatResponse }) {
+function Seat({
+  seat,
+  isSelected,
+  onSelect,
+}: {
+  seat: SeatResponse;
+  isSelected: boolean;
+  onSelect: (seatId: string) => void;
+}) {
   const isAvailable = seat.status === "available";
 
+  if (!isAvailable) {
+    return (
+      <div
+        className={`flex min-h-16 items-center justify-center rounded-xl border-2 px-2 text-center transition ${STATUS_STYLES[seat.status]} cursor-not-allowed`}
+        aria-label={`${seat.seat_number}, ${STATUS_LABELS[seat.status]}`}
+        title={`${seat.seat_number} — ${STATUS_LABELS[seat.status]}`}
+      >
+        <div>
+          <span className="block text-sm font-bold">{seat.seat_number}</span>
+          <span className="mt-1 block text-[11px] font-medium">
+            {STATUS_LABELS[seat.status]}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={`flex min-h-16 items-center justify-center rounded-xl border-2 px-2 text-center transition ${STATUS_STYLES[seat.status]} ${
-        isAvailable ? "cursor-default" : "cursor-not-allowed"
+    <button
+      type="button"
+      onClick={() => onSelect(seat.id)}
+      aria-pressed={isSelected}
+      aria-label={`${seat.seat_number}, ${
+        isSelected ? "Selected" : STATUS_LABELS[seat.status]
       }`}
-      aria-label={`${seat.seat_number}, ${STATUS_LABELS[seat.status]}`}
-      title={`${seat.seat_number} — ${STATUS_LABELS[seat.status]}`}
+      className={`flex min-h-16 items-center justify-center rounded-xl border-2 px-2 text-center transition focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 ${
+        isSelected
+          ? "border-slate-950 bg-slate-950 text-white"
+          : STATUS_STYLES.available
+      }`}
     >
       <div>
         <span className="block text-sm font-bold">{seat.seat_number}</span>
         <span className="mt-1 block text-[11px] font-medium">
-          {STATUS_LABELS[seat.status]}
+          {isSelected ? "Selected" : STATUS_LABELS.available}
         </span>
       </div>
-    </div>
+    </button>
   );
 }
 
 function Deck({
   name,
   seats,
+  selectedSeatIds,
+  onSelect,
 }: {
   name: string;
   seats: SeatResponse[];
+  selectedSeatIds: Set<string>;
+  onSelect: (seatId: string) => void;
 }) {
   return (
     <section
@@ -67,7 +105,12 @@ function Deck({
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
         {seats.map((seat) => (
-          <Seat key={seat.id} seat={seat} />
+          <Seat
+            key={seat.id}
+            seat={seat}
+            isSelected={selectedSeatIds.has(seat.id)}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </section>
@@ -75,8 +118,30 @@ function Deck({
 }
 
 export default function SeatMap({ seats }: SeatMapProps) {
+  const [selectedSeatIds, setSelectedSeatIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  function handleSeatSelect(seatId: string) {
+    setSelectedSeatIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(seatId)) {
+        next.delete(seatId);
+      } else {
+        next.add(seatId);
+      }
+
+      return next;
+    });
+  }
+
   const upperDeckSeats = seats.filter((seat) => seat.deck === "upper");
   const lowerDeckSeats = seats.filter((seat) => seat.deck === "lower");
+
+  const selectedSeatNumbers = seats
+    .filter((seat) => selectedSeatIds.has(seat.id))
+    .map((seat) => seat.seat_number);
 
   return (
     <div className="mt-8 space-y-6">
@@ -86,8 +151,8 @@ export default function SeatMap({ seats }: SeatMapProps) {
         </h2>
 
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Review the current seat status for both decks. Seat availability is
-          controlled by the reservation system.
+          Select available seats. Seats marked as held, booked, or reserved
+          cannot be selected.
         </p>
       </div>
 
@@ -123,8 +188,34 @@ export default function SeatMap({ seats }: SeatMapProps) {
         </p>
       ) : (
         <>
-          <Deck name="Upper" seats={upperDeckSeats} />
-          <Deck name="Lower" seats={lowerDeckSeats} />
+          <Deck
+            name="Upper"
+            seats={upperDeckSeats}
+            selectedSeatIds={selectedSeatIds}
+            onSelect={handleSeatSelect}
+          />
+
+          <Deck
+            name="Lower"
+            seats={lowerDeckSeats}
+            selectedSeatIds={selectedSeatIds}
+            onSelect={handleSeatSelect}
+          />
+
+          <div
+            className="rounded-xl border border-slate-200 bg-white p-5"
+            aria-live="polite"
+          >
+            <p className="text-sm font-semibold text-slate-900">
+              Selected seats: {selectedSeatNumbers.length}
+            </p>
+
+            <p className="mt-1 text-sm text-slate-600">
+              {selectedSeatNumbers.length > 0
+                ? selectedSeatNumbers.join(", ")
+                : "No seats selected yet."}
+            </p>
+          </div>
         </>
       )}
     </div>

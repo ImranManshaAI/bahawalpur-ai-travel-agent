@@ -1,22 +1,50 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { getMockSchedules } from "@/lib/schedules";
+import { useEffect, useState } from "react";
+import type { ScheduleResponse } from "@/lib/api-types";
+import { getSchedules } from "@/lib/api";
+
+const DEFAULT_DATE = "2026-09-15";
 
 export default function ScheduleSelector() {
-  const schedules = getMockSchedules();
+  const [selectedDate, setSelectedDate] = useState(DEFAULT_DATE);
+  const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [selectedDate, setSelectedDate] = useState(
-    schedules[0]?.date ?? "",
-  );
-  const [selectedTimingId, setSelectedTimingId] = useState("");
+  useEffect(() => {
+    let isActive = true;
 
-  const selectedSchedule = useMemo(
-    () => schedules.find((schedule) => schedule.date === selectedDate),
-    [schedules, selectedDate],
-  );
+    async function loadSchedules() {
+      setIsLoading(true);
+      setErrorMessage(null);
 
-  const timings = selectedSchedule?.timings ?? [];
+      try {
+        const data = await getSchedules(selectedDate);
+
+        if (isActive) {
+          setSchedules(data);
+        }
+      } catch {
+        if (isActive) {
+          setSchedules([]);
+          setErrorMessage(
+            "We couldn't load the available departures. Please try again.",
+          );
+        }
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadSchedules();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedDate]);
 
   return (
     <div className="mt-8 space-y-8">
@@ -28,21 +56,13 @@ export default function ScheduleSelector() {
           Travel date
         </label>
 
-        <select
+        <input
           id="travel-date"
+          type="date"
           value={selectedDate}
-          onChange={(event) => {
-            setSelectedDate(event.target.value);
-            setSelectedTimingId("");
-          }}
+          onChange={(event) => setSelectedDate(event.target.value)}
           className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-slate-900 focus:ring-2 focus:ring-slate-900 focus:ring-offset-2 sm:max-w-md"
-        >
-          {schedules.map((schedule) => (
-            <option key={schedule.id} value={schedule.date}>
-              {schedule.date}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       <fieldset>
@@ -50,46 +70,53 @@ export default function ScheduleSelector() {
           Choose a departure time
         </legend>
 
-        {timings.length > 0 ? (
+        {isLoading ? (
+          <div
+            className="mt-3 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600"
+            aria-live="polite"
+          >
+            Loading departures...
+          </div>
+        ) : errorMessage ? (
+          <div
+            className="mt-3 rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800"
+            role="alert"
+          >
+            {errorMessage}
+          </div>
+        ) : schedules.length > 0 ? (
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
-            {timings.map((timing) => {
-              const isSelected = selectedTimingId === timing.id;
+            {schedules.map((schedule) => (
+              <label
+                key={schedule.id}
+                className="cursor-pointer rounded-xl border border-slate-200 bg-white p-5 transition hover:border-slate-400 hover:shadow-sm focus-within:ring-2 focus-within:ring-slate-950 focus-within:ring-offset-2"
+              >
+                <input
+                  type="radio"
+                  name="departure-time"
+                  value={schedule.id}
+                  className="sr-only"
+                />
 
-              return (
-                <label
-                  key={timing.id}
-                  className={`cursor-pointer rounded-xl border p-4 transition ${
-                    isSelected
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-200 bg-white text-slate-900 hover:border-slate-400"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="departure-time"
-                    value={timing.id}
-                    checked={isSelected}
-                    onChange={() => setSelectedTimingId(timing.id)}
-                    className="sr-only"
-                  />
+                <span className="block text-xl font-semibold text-slate-950">
+                  {schedule.timing_slot}
+                </span>
 
-                  <span className="block text-lg font-semibold">
-                    {timing.departure_time}
-                  </span>
+                <span className="mt-2 block text-sm text-slate-600">
+                  {schedule.available_seats} seats available
+                </span>
 
-                  <span
-                    className={`mt-1 block text-sm ${
-                      isSelected ? "text-slate-200" : "text-slate-500"
-                    }`}
-                  >
-                    {timing.available_seats} seats available
-                  </span>
-                </label>
-              );
-            })}
+                <span className="mt-4 block text-xs text-slate-500">
+                  Schedule status: {schedule.status}
+                </span>
+              </label>
+            ))}
           </div>
         ) : (
-          <p className="mt-3 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
+          <p
+            className="mt-3 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600"
+            role="status"
+          >
             No departures are available for this date.
           </p>
         )}

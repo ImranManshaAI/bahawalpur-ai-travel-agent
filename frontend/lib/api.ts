@@ -1,4 +1,6 @@
-﻿const API_BASE_URL =
+﻿import { mockGetSchedules } from "@/mocks/api";
+
+const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 export interface ApiErrorPayload {
@@ -77,6 +79,10 @@ async function parseResponse<T>(response: Response): Promise<T> {
   }
 
   return body.data;
+}
+
+export async function getSchedules(date: string) {
+  return mockGetSchedules(date);
 }
 
 export async function apiFetch<T>(

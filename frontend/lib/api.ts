@@ -1,6 +1,7 @@
 ﻿import {
   mockGetScheduleSeats,
   mockGetSchedules,
+  mockHoldSeats,
 } from "@/mocks/api";
 import type {
   HoldRequest,
@@ -105,18 +106,18 @@ export async function getScheduleSeats(scheduleId: string) {
 }
 
 /**
- * Backend implementation of:
+ * Mock implementation of:
  * POST /bookings/hold
  */
 export async function holdSeats(
   request: HoldRequest,
 ): Promise<HoldResponse> {
-  return apiFetch<HoldResponse>("/bookings/hold", {
-    method: "POST",
-    body: JSON.stringify(request),
-  });
+  return mockHoldSeats(request);
 }
 
+/**
+ * Real backend API request helper.
+ */
 export async function apiFetch<T>(
   path: string,
   options?: RequestInit,
@@ -133,6 +134,9 @@ export async function apiFetch<T>(
   return parseResponse<T>(response);
 }
 
+/**
+ * Multipart upload helper.
+ */
 export async function apiUpload<T>(
   path: string,
   formData: FormData,

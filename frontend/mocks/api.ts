@@ -1,4 +1,6 @@
 import type {
+  HoldRequest,
+  HoldResponse,
   ScheduleResponse,
   ScheduleSeatsResponse,
 } from "@/lib/api-types";
@@ -41,4 +43,19 @@ export function mockGetScheduleSeats(
   }
 
   return MOCK_SCHEDULE_SEATS;
+}
+
+export function mockHoldSeats(request: HoldRequest): HoldResponse {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
+
+  return {
+    hold_id: `mock-hold-${Date.now()}`,
+    token: `mock-token-${Date.now()}`,
+    seat_ids: request.seat_ids,
+    status: "held",
+    held_at: now.toISOString(),
+    hold_expires_at: expiresAt.toISOString(),
+    remaining_seconds: 10 * 60,
+  };
 }

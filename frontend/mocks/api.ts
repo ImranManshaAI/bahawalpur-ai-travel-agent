@@ -1,4 +1,5 @@
 import type {
+  BookingStatusResponse,
   CreateBookingRequest,
   CreateBookingResponse,
   HoldRequest,
@@ -91,5 +92,28 @@ export function mockCreateBooking(
         account_number: "PK00-MOCK-ACCOUNT",
       },
     ],
+  };
+}
+
+export function mockGetBookingStatus(
+  query: string,
+): BookingStatusResponse {
+  const normalizedQuery = query.trim();
+
+  if (!normalizedQuery) {
+    throw new Error("Booking reference, phone, or email is required.");
+  }
+
+  return {
+    booking_id: "mock-booking-status-001",
+    booking_ref: "BWP-123456",
+    date: MOCK_SCHEDULE_SEATS.date,
+    timing_slot: MOCK_SCHEDULE_SEATS.timing_slot,
+    seat_numbers: ["L1", "L2"],
+    passenger_count: 2,
+    total_price: 1000,
+    booking_status: "pending_payment",
+    payment_status: "unpaid",
+    created_at: new Date().toISOString(),
   };
 }

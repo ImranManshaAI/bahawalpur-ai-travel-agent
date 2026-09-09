@@ -178,7 +178,10 @@ export default function ScheduleSelector() {
             </div>
           ) : scheduleSeats ? (
             <div id="seat-selection-heading">
-              <SeatMap seats={scheduleSeats.seats} />
+              <SeatMap
+                scheduleId={scheduleSeats.schedule_id}
+                seats={scheduleSeats.seats}
+              />
             </div>
           ) : null}
         </section>

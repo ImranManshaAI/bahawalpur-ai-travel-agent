@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { HoldResponse, SeatResponse } from "@/lib/api-types";
 import { holdSeats } from "@/lib/api";
+import PassengerDetailsForm from "@/components/PassengerDetailsForm";
 
 interface SeatMapProps {
   scheduleId: string;
@@ -255,6 +256,14 @@ export default function SeatMap({
               : "Hold selected seats"}
         </button>
       </div>
+
+      {hold && remainingSeconds > 0 && (
+        <PassengerDetailsForm
+          holdToken={hold.token}
+          passengerCount={hold.seat_ids.length}
+          remainingSeconds={remainingSeconds}
+        />
+      )}
     </div>
   );
 }

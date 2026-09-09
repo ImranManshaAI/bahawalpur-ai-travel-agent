@@ -6,6 +6,7 @@ import type {
   CreateBookingRequest,
   CreateBookingResponse,
 } from "@/lib/api-types";
+import PaymentProofForm from "@/components/PaymentProofForm";
 
 interface PassengerDetailsFormProps {
   holdToken: string;
@@ -61,140 +62,137 @@ export default function PassengerDetailsForm({
     const primaryPaymentMethod = booking.payment_methods[0];
 
     return (
-      <section
-        aria-labelledby="booking-details-heading"
-        className="rounded-xl border border-slate-200 bg-white p-6"
-      >
-        <div
-          className="rounded-lg border border-green-200 bg-green-50 p-5"
-          role="status"
-          aria-live="polite"
+      <div className="space-y-6">
+        <section
+          aria-labelledby="booking-details-heading"
+          className="rounded-xl border border-slate-200 bg-white p-6"
         >
-          <p className="text-sm font-semibold text-green-900">
-            Booking created successfully
-          </p>
-
-          <p className="mt-1 text-sm text-green-800">
-            Your booking reference is {booking.booking_ref}.
-          </p>
-        </div>
-
-        <div className="mt-6">
-          <h2
-            id="booking-details-heading"
-            className="text-xl font-bold text-slate-950"
+          <div
+            className="rounded-lg border border-green-200 bg-green-50 p-5"
+            role="status"
+            aria-live="polite"
           >
-            Booking details
-          </h2>
+            <p className="text-sm font-semibold text-green-900">
+              Booking created successfully
+            </p>
 
-          <dl className="mt-4 space-y-3 rounded-lg bg-slate-50 p-4">
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Booking reference
-              </dt>
-              <dd className="mt-1 text-sm font-semibold text-slate-900">
-                {booking.booking_ref}
-              </dd>
-            </div>
+            <p className="mt-1 text-sm text-green-800">
+              Your booking reference is {booking.booking_ref}.
+            </p>
+          </div>
 
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Travel date
-              </dt>
-              <dd className="mt-1 text-sm text-slate-900">
-                {booking.date}
-              </dd>
-            </div>
+          <div className="mt-6">
+            <h2
+              id="booking-details-heading"
+              className="text-xl font-bold text-slate-950"
+            >
+              Booking details
+            </h2>
 
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Departure
-              </dt>
-              <dd className="mt-1 text-sm text-slate-900">
-                {booking.timing_slot}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Passengers
-              </dt>
-              <dd className="mt-1 text-sm text-slate-900">
-                {booking.passenger_count}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Total price
-              </dt>
-              <dd className="mt-1 text-sm font-semibold text-slate-900">
-                {booking.total_price}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Booking status
-              </dt>
-              <dd className="mt-1 text-sm text-slate-900">
-                {booking.booking_status}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Payment status
-              </dt>
-              <dd className="mt-1 text-sm text-slate-900">
-                {booking.payment_status}
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        {primaryPaymentMethod && (
-          <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
-            <h3 className="text-sm font-semibold text-slate-950">
-              Payment method
-            </h3>
-
-            <dl className="mt-3 space-y-2 text-sm">
+            <dl className="mt-4 space-y-3 rounded-lg bg-slate-50 p-4">
               <div>
-                <dt className="text-slate-500">Method</dt>
-                <dd className="font-medium text-slate-900">
-                  {primaryPaymentMethod.name}
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Booking reference
+                </dt>
+                <dd className="mt-1 text-sm font-semibold text-slate-900">
+                  {booking.booking_ref}
                 </dd>
               </div>
 
               <div>
-                <dt className="text-slate-500">Account name</dt>
-                <dd className="font-medium text-slate-900">
-                  {primaryPaymentMethod.account_name}
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Travel date
+                </dt>
+                <dd className="mt-1 text-sm text-slate-900">
+                  {booking.date}
                 </dd>
               </div>
 
               <div>
-                <dt className="text-slate-500">Account number</dt>
-                <dd className="font-medium text-slate-900">
-                  {primaryPaymentMethod.account_number}
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Departure
+                </dt>
+                <dd className="mt-1 text-sm text-slate-900">
+                  {booking.timing_slot}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Passengers
+                </dt>
+                <dd className="mt-1 text-sm text-slate-900">
+                  {booking.passenger_count}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Total price
+                </dt>
+                <dd className="mt-1 text-sm font-semibold text-slate-900">
+                  {booking.total_price}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Booking status
+                </dt>
+                <dd className="mt-1 text-sm text-slate-900">
+                  {booking.booking_status}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Payment status
+                </dt>
+                <dd className="mt-1 text-sm text-slate-900">
+                  {booking.payment_status}
                 </dd>
               </div>
             </dl>
           </div>
-        )}
 
-        <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-semibold text-slate-950">
-            Next step
-          </p>
+          {primaryPaymentMethod && (
+            <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
+              <h3 className="text-sm font-semibold text-slate-950">
+                Payment method
+              </h3>
 
-          <p className="mt-1 text-sm text-slate-600">
-            Submit your manual payment proof to complete the payment
-            verification process.
-          </p>
-        </div>
-      </section>
+              <dl className="mt-3 space-y-2 text-sm">
+                <div>
+                  <dt className="text-slate-500">Method</dt>
+                  <dd className="font-medium text-slate-900">
+                    {primaryPaymentMethod.name}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-slate-500">Account name</dt>
+                  <dd className="font-medium text-slate-900">
+                    {primaryPaymentMethod.account_name}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-slate-500">Account number</dt>
+                  <dd className="font-medium text-slate-900">
+                    {primaryPaymentMethod.account_number}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
+        </section>
+
+        <PaymentProofForm
+          bookingId={booking.booking_id}
+          totalPrice={booking.total_price}
+          paymentMethods={booking.payment_methods}
+        />
+      </div>
     );
   }
 

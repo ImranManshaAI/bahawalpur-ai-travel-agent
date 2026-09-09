@@ -1,3 +1,4 @@
+import BookingStatusLookup from "@/components/BookingStatusLookup";
 import ScheduleSelector from "@/components/ScheduleSelector";
 
 export default function Home() {
@@ -15,12 +16,21 @@ export default function Home() {
           </div>
 
           <nav aria-label="Main navigation">
-            <a
-              href="#booking"
-              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
-            >
-              Book a Seat
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href="#booking"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+              >
+                Book a Seat
+              </a>
+
+              <a
+                href="#booking-status"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:ring-offset-2"
+              >
+                Check Booking
+              </a>
+            </div>
           </nav>
         </div>
       </header>
@@ -80,6 +90,32 @@ export default function Home() {
             </p>
 
             <ScheduleSelector />
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="booking-status"
+        aria-labelledby="booking-status-section-heading"
+        className="border-t border-slate-200 bg-white"
+      >
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+          <div className="max-w-2xl">
+            <h2
+              id="booking-status-section-heading"
+              className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl"
+            >
+              Manage your booking
+            </h2>
+
+            <p className="mt-3 text-slate-600">
+              Already submitted a booking? Check its current status using your
+              booking reference, phone number, or email.
+            </p>
+
+            <div className="mt-8">
+              <BookingStatusLookup />
+            </div>
           </div>
         </div>
       </section>

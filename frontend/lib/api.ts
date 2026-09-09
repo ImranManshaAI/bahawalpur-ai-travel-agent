@@ -1,9 +1,12 @@
 ﻿import {
+  mockCreateBooking,
   mockGetScheduleSeats,
   mockGetSchedules,
   mockHoldSeats,
 } from "@/mocks/api";
 import type {
+  CreateBookingRequest,
+  CreateBookingResponse,
   HoldRequest,
   HoldResponse,
 } from "@/lib/api-types";
@@ -113,6 +116,16 @@ export async function holdSeats(
   request: HoldRequest,
 ): Promise<HoldResponse> {
   return mockHoldSeats(request);
+}
+
+/**
+ * Mock implementation of:
+ * POST /bookings
+ */
+export async function createBooking(
+  request: CreateBookingRequest,
+): Promise<CreateBookingResponse> {
+  return mockCreateBooking(request);
 }
 
 /**

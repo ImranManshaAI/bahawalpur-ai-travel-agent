@@ -1,4 +1,6 @@
 import type {
+  CreateBookingRequest,
+  CreateBookingResponse,
   HoldRequest,
   HoldResponse,
   ScheduleResponse,
@@ -57,5 +59,37 @@ export function mockHoldSeats(request: HoldRequest): HoldResponse {
     held_at: now.toISOString(),
     hold_expires_at: expiresAt.toISOString(),
     remaining_seconds: 10 * 60,
+  };
+}
+
+export function mockCreateBooking(
+  request: CreateBookingRequest,
+): CreateBookingResponse {
+  const bookingId = `mock-booking-${Date.now()}`;
+  const bookingRef = `BWP-${Date.now().toString().slice(-6)}`;
+
+  return {
+    booking_id: bookingId,
+    booking_ref: bookingRef,
+    date: MOCK_SCHEDULE_SEATS.date,
+    timing_slot: MOCK_SCHEDULE_SEATS.timing_slot,
+    seat_ids: [],
+    seat_numbers: [],
+    passenger_count: request.passenger_count,
+    total_price: request.passenger_count * 500,
+    booking_type: "visitor",
+    booking_status: "pending_payment",
+    payment_status: "unpaid",
+    hold_expires_at: new Date(
+      Date.now() + 10 * 60 * 1000,
+    ).toISOString(),
+    payment_methods: [
+      {
+        id: "mock-bank-transfer",
+        name: "Bank Transfer",
+        account_name: "TDCP Bahawalpur",
+        account_number: "PK00-MOCK-ACCOUNT",
+      },
+    ],
   };
 }

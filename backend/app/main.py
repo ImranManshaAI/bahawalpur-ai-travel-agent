@@ -3,9 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.core.auth import UnauthorizedError
 from app.core.database import pool
 from app.core.errors import ConflictError, InvalidReferenceError, NotFoundError, UpstreamDatabaseError
+from app.routers.admin_auth import router as admin_auth_router
 from app.routers.admin_schedules import router as admin_schedules_router
+from app.routers.admin_verification import router as admin_verification_router
 from app.routers.bookings import router as bookings_router
 from app.routers.schedules import router as schedules_router
 
@@ -27,6 +30,8 @@ app = FastAPI(
 app.include_router(bookings_router)
 app.include_router(schedules_router)
 app.include_router(admin_schedules_router)
+app.include_router(admin_auth_router)
+app.include_router(admin_verification_router)
 
 
 def _error_response(status_code: int, code: str, message: str) -> JSONResponse:
@@ -46,6 +51,11 @@ def _error_response(status_code: int, code: str, message: str) -> JSONResponse:
 # /admin/schedules/* and /schedules/*). No generic catch-all `Exception`
 # handler is registered: unexpected errors on any endpoint fall through to
 # FastAPI's normal default 500 handling, unchanged.
+
+
+@app.exception_handler(UnauthorizedError)
+def handle_unauthorized(request: Request, exc: UnauthorizedError):
+    return _error_response(401, "UNAUTHORIZED", str(exc))
 
 
 @app.exception_handler(NotFoundError)

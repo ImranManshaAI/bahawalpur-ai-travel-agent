@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter
 from psycopg.errors import RaiseException
 
+from app.core.errors import InvalidReferenceError
 from app.schemas.booking import (
     BookingHoldRequest,
     BookingHoldResponse,
@@ -15,6 +16,10 @@ from app.schemas.booking import (
 )
 
 from app.services.booking import (
+    DuplicateSeatIdsError,
+    ScheduleNotFoundError,
+    ScheduleNotOpenError,
+    classify_hold_failure,
     create_booking,
     create_booking_hold,
     get_seat_numbers,
@@ -33,40 +38,64 @@ def hold_seats(request: BookingHoldRequest):
             seat_ids=request.seat_ids,
         )
 
+    except DuplicateSeatIdsError as exc:
+        return BookingHoldResponse(
+            data=None,
+            error={"code": "DUPLICATE_SEAT_IDS", "message": str(exc), "details": None},
+        )
+
+    except ScheduleNotFoundError as exc:
+        return BookingHoldResponse(
+            data=None,
+            error={"code": "SCHEDULE_NOT_FOUND", "message": str(exc), "details": None},
+        )
+
+    except ScheduleNotOpenError as exc:
+        return BookingHoldResponse(
+            data=None,
+            error={"code": "SCHEDULE_CLOSED", "message": str(exc), "details": None},
+        )
+
+    except InvalidReferenceError as exc:
+        return BookingHoldResponse(
+            data=None,
+            error={"code": "SEAT_NOT_FOUND", "message": str(exc), "details": None},
+        )
+
     except RaiseException as exc:
         message = str(exc)
+        code, client_message = classify_hold_failure(message)
 
-        match = re.search(r"Seat\(s\) \{([^}]*)\}", message)
+        details = None
 
-        unavailable_seat_ids = []
+        if code == "SEAT_UNAVAILABLE":
+            match = re.search(r"Seat\(s\) \{([^}]*)\}", message)
 
-        if match:
-            unavailable_seat_numbers = {
-                int(value.strip())
-                for value in match.group(1).split(",")
-                if value.strip()
-            }
+            unavailable_seat_ids = []
 
-            seat_map = get_seat_numbers(
-                schedule_id=request.schedule_id,
-                seat_ids=request.seat_ids,
-            )
+            if match:
+                unavailable_seat_numbers = {
+                    int(value.strip())
+                    for value in match.group(1).split(",")
+                    if value.strip()
+                }
 
-            unavailable_seat_ids = [
-                seat_id
-                for seat_id, seat_number in seat_map.items()
-                if seat_number in unavailable_seat_numbers
-            ]
+                seat_map = get_seat_numbers(
+                    schedule_id=request.schedule_id,
+                    seat_ids=request.seat_ids,
+                )
+
+                unavailable_seat_ids = [
+                    seat_id
+                    for seat_id, seat_number in seat_map.items()
+                    if seat_number in unavailable_seat_numbers
+                ]
+
+            details = {"unavailable_seat_ids": unavailable_seat_ids}
 
         return BookingHoldResponse(
             data=None,
-            error={
-                "code": "SEAT_UNAVAILABLE",
-                "message": "One or more selected seats are unavailable.",
-                "details": {
-                    "unavailable_seat_ids": unavailable_seat_ids,
-                },
-            },
+            error={"code": code, "message": client_message, "details": details},
         )
 
     now = datetime.now(timezone.utc)

@@ -3,6 +3,7 @@ from uuid import UUID
 from psycopg.rows import dict_row
 
 from app.core.database import pool
+from app.core.errors import InvalidReferenceError
 
 from supabase import create_client
 
@@ -12,6 +13,44 @@ supabase = create_client(
     settings.supabase_url,
     settings.supabase_key,
 )
+
+
+class DuplicateSeatIdsError(Exception):
+    """Raised when a hold request repeats the same seat_id more than once."""
+
+
+class ScheduleNotFoundError(Exception):
+    """Raised when the referenced schedule_instance does not exist."""
+
+
+class ScheduleNotOpenError(Exception):
+    """Raised when the referenced schedule_instance exists but is not
+    'open' (e.g. 'closed') and therefore cannot accept new holds."""
+
+
+def classify_hold_failure(message: str) -> tuple[str, str]:
+    """Map a create_seat_hold() RaiseException message to a stable, safe
+    (code, client_message) pair.
+
+    Only the seat-unavailable case is routine, expected client feedback and
+    safe to describe. Every other case is a system/business-rule failure,
+    not the client's fault, and must never leak raw database text to the
+    client (AGENTS.md security rules) — each gets a fixed, generic message.
+    """
+    if "are not available to hold" in message:
+        return "SEAT_UNAVAILABLE", "One or more selected seats are unavailable."
+
+    if "do not exist on schedule" in message:
+        return "SEAT_NOT_FOUND", "One or more selected seats do not exist for this schedule."
+
+    if "Hold duration" in message:
+        return (
+            "HOLD_CONFIGURATION_ERROR",
+            "Seat holds are temporarily unavailable due to a system "
+            "configuration issue. Please try again later.",
+        )
+
+    return "HOLD_FAILED", "Unable to place a hold on the requested seats. Please try again."
 
 
 def get_seat_numbers(schedule_id: UUID, seat_ids: list[UUID]) -> dict[UUID, int]:
@@ -35,22 +74,60 @@ def create_booking_hold(
     schedule_id: UUID,
     seat_ids: list[UUID],
 ):
-    seat_map = get_seat_numbers(schedule_id, seat_ids)
-
-    if len(seat_map) != len(seat_ids):
-        missing_seat_ids = [seat_id for seat_id in seat_ids if seat_id not in seat_map]
-        raise ValueError(f"Seat(s) not found for schedule: {missing_seat_ids}")
-
-    seat_numbers = [seat_map[seat_id] for seat_id in seat_ids]
-
-    query = """
-        SELECT hold_token, expires_at
-        FROM create_seat_hold(%s, %s)
-    """
+    if len(set(seat_ids)) != len(seat_ids):
+        raise DuplicateSeatIdsError(
+            "Duplicate seat_ids are not allowed in a single hold request."
+        )
 
     with pool.connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
-            cur.execute(query, (schedule_id, seat_numbers))
+            # Lock the schedule row with FOR SHARE, in the SAME transaction
+            # that goes on to call create_seat_hold(). A concurrent
+            # PATCH /admin/schedules/{id} closing this schedule issues a
+            # plain UPDATE, which needs a conflicting row lock on this same
+            # row — so it either completes fully before this SELECT (and we
+            # correctly observe 'closed'), or it blocks until this
+            # transaction commits/rolls back (so a hold that already saw
+            # 'open' cannot be preempted mid-flight). This avoids a
+            # race-prone plain read of schedule status.
+            cur.execute(
+                "SELECT status FROM schedule_instances WHERE id = %s FOR SHARE",
+                (schedule_id,),
+            )
+            schedule = cur.fetchone()
+
+            if schedule is None:
+                raise ScheduleNotFoundError(f"Schedule instance {schedule_id} not found.")
+
+            if schedule["status"] != "open":
+                raise ScheduleNotOpenError(
+                    f"Schedule instance {schedule_id} is '{schedule['status']}' "
+                    "and is not accepting new holds."
+                )
+
+            cur.execute(
+                """
+                SELECT id, seat_number
+                FROM seats
+                WHERE schedule_instance_id = %s
+                  AND id = ANY(%s)
+                """,
+                (schedule_id, seat_ids),
+            )
+            seat_map = {row["id"]: row["seat_number"] for row in cur.fetchall()}
+
+            if len(seat_map) != len(seat_ids):
+                missing_seat_ids = [seat_id for seat_id in seat_ids if seat_id not in seat_map]
+                raise InvalidReferenceError(
+                    f"Seat(s) not found for schedule {schedule_id}: {missing_seat_ids}"
+                )
+
+            seat_numbers = [seat_map[seat_id] for seat_id in seat_ids]
+
+            cur.execute(
+                "SELECT hold_token, expires_at FROM create_seat_hold(%s, %s)",
+                (schedule_id, seat_numbers),
+            )
             result = cur.fetchone()
 
             cur.execute(

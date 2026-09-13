@@ -37,11 +37,15 @@ def _error_response(status_code: int, code: str, message: str) -> JSONResponse:
 
 
 # Exception handlers below are scoped to the four exception types defined in
-# app/core/errors.py. Nothing in the existing /bookings/* code raises these
-# types, so registering these handlers has no effect on existing booking
-# endpoints' behavior. No generic catch-all `Exception` handler is
-# registered: unexpected errors on any endpoint (including these new ones)
-# fall through to FastAPI's normal default 500 handling, unchanged.
+# app/core/errors.py. As of Phase 3, /bookings/{id}/payment-proof does raise
+# InvalidReferenceError (for an invalid payment_method_id), but it is always
+# caught locally inside that endpoint and translated into the standard
+# {data, error} envelope before it can propagate — so these global handlers
+# still have no effect on /bookings/* responses; they only apply to routes
+# that let one of these four types propagate uncaught (currently
+# /admin/schedules/* and /schedules/*). No generic catch-all `Exception`
+# handler is registered: unexpected errors on any endpoint fall through to
+# FastAPI's normal default 500 handling, unchanged.
 
 
 @app.exception_handler(NotFoundError)

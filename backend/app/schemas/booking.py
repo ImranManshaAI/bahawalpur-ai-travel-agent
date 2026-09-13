@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -60,8 +60,37 @@ class PaymentProofData(BaseModel):
     booking_id: UUID
     screenshot_url: str
     status: str
+    payment_method_id: UUID | None = None
+    transaction_reference: str | None = None
+    amount_claimed: float | None = None
 
 
 class PaymentProofResponse(BaseModel):
     data: PaymentProofData | None = None
+    error: ErrorResponse | None = None
+
+
+# ---------- GET /bookings/status ----------
+
+
+class BookingStatusSeat(BaseModel):
+    seat_number: int
+    deck: str
+
+
+class BookingStatusData(BaseModel):
+    booking_id: UUID
+    booking_ref: str
+    travel_date: date
+    timing_slot: str
+    seats: list[BookingStatusSeat]
+    passenger_count: int
+    total_price: float
+    booking_status: str
+    payment_status: str | None = None
+    status_message: str
+
+
+class BookingStatusResponse(BaseModel):
+    data: list[BookingStatusData] | None = None
     error: ErrorResponse | None = None

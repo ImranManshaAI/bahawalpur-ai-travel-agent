@@ -82,10 +82,10 @@ The single most important thing in this whole plan is Section 3 (seat holds) and
 
 ---
 
-## Phase 5 — AI Assistant (Optional)
+## Phase 5 — AI Assistant 
 
-- [ ] Define tools for Gemini function calling, each mapping directly to an existing endpoint above — never a separate code path with its own data logic: `check_availability`, `get_seat_map`, `create_booking_hold`, `submit_booking`, `get_booking_status`.
-- [ ] `POST /agent/chat` — receives a message, runs the Gemini function-calling loop, executes whichever tool is requested against the real backend logic, returns the reply.
+- [ ] Define tools for OpenRouter tool/function calling, each mapping directly to an existing endpoint above — never a separate code path with its own data logic: `check_availability`, `get_seat_map`, `create_booking_hold`, `submit_booking`, `get_booking_status`.
+- [ ] `POST /agent/chat` — receives a message, runs the OpenRouter tool-calling loop, executes whichever tool is requested against the real backend logic, returns the reply.
 - [ ] Test explicitly that the assistant cannot answer availability/pricing/status questions without actually calling a tool — if it ever states a transactional fact without a tool call in the trace, that's a bug per SDD Section 4.8.
 
 **🔗 Checkpoint:** `/agent/chat` live — partner wires the optional chat widget to it.

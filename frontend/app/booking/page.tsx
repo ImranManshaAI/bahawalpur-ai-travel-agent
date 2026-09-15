@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import ScheduleSelector from "@/components/ScheduleSelector";
@@ -42,10 +43,13 @@ export default function BookingPage() {
             aria-label="Back to TDCP Bahawalpur home"
           >
             <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-lg bg-white">
-              <img
+              <Image
                 src="/images/tdcp-logo.png.jpeg.jpeg"
-                alt="TDCP"
+                alt="TDCP logo"
+                width={48}
+                height={48}
                 className="h-full w-full object-contain"
+                priority
               />
             </div>
 
@@ -53,6 +57,7 @@ export default function BookingPage() {
               <p className="text-sm font-black tracking-[0.08em] text-[#087a56]">
                 TDCP
               </p>
+
               <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-[#65736d]">
                 Bahawalpur Double-Decker
               </p>
@@ -72,6 +77,7 @@ export default function BookingPage() {
               className="relative py-2 text-sm font-black text-[#087a56]"
             >
               Bus Booking
+
               <span className="absolute bottom-0 left-0 right-0 h-[3px] rounded-full bg-[#087a56]" />
             </Link>
 
@@ -113,9 +119,7 @@ export default function BookingPage() {
 
             <h1 className="mt-5 text-4xl font-black tracking-[-0.045em] text-[#071c15] sm:text-5xl lg:text-6xl">
               Book your Double-Decker
-              <span className="block text-[#087a56]">
-                Bus seat.
-              </span>
+              <span className="block text-[#087a56]">Bus seat.</span>
             </h1>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-[#596962] sm:text-lg">

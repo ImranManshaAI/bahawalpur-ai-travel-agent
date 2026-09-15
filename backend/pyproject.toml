@@ -5,7 +5,19 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "bcrypt>=5.0.0",
     "fastapi>=0.141.1",
+    "openai>=3.13.0",
+    "psycopg-pool>=3.3.1",
+    "psycopg[binary]>=3.3.5",
     "pydantic-settings>=2.15.0",
+    "pyjwt>=2.13.0",
+    "python-multipart>=0.0.32",
+    "supabase>=2.31.0",
     "uvicorn[standard]>=0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
 ]

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "schedule-001",
+    "date": "2026-09-15",
+    "timings": [
+      {
+        "id": "timing-001",
+        "departure_time": "09:00",
+        "available_seats": 28
+      },
+      {
+        "id": "timing-002",
+        "departure_time": "15:00",
+        "available_seats": 19
+      }
+    ]
+  }
+]

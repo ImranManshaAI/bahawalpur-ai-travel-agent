@@ -2,10 +2,38 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const heroImages = [
+  {
+    src: "/images/central-library-bahawalpur-2.jpg",
+    alt: "Central Library Bahawalpur",
+  },
+  {
+    src: "/images/hero-bUs.png.png",
+    alt: "Bahawalpur Double-Decker Bus",
+  },
+  {
+    src: "/images/dabar-mahal.png.png",
+    alt: "Dabar Mahal Bahawalpur",
+  },
+  {
+    src: "/images/ss-world.png.png",
+    alt: "SS World Bahawalpur",
+  },
+  {
+    src: "/images/fawara-chowk-bahawalpur-3.jpg",
+    alt: "Fawara Chowk Bahawalpur",
+  },
+  {
+    src: "/images/gulzar-e-sadiq-park-1.jpg",
+    alt: "Gulzar-e-Sadiq Park",
+  },
+];
 
 const routes = [
   {
@@ -268,12 +296,40 @@ function Icon({
 }
 
 export default function HomePage() {
+  const router = useRouter();
+
   const [date, setDate] = useState("");
   const [time, setTime] = useState("17:30");
   const [bookingRef, setBookingRef] = useState("");
   const [statusLoading, setStatusLoading] = useState(false);
+  const [currentHero, setCurrentHero] = useState(0);
 
-  async function handleStatusSearch(e: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCurrentHero(
+        (current) => (current + 1) % heroImages.length
+      );
+    }, 5000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  function nextHero() {
+    setCurrentHero(
+      (current) => (current + 1) % heroImages.length
+    );
+  }
+
+  function previousHero() {
+    setCurrentHero(
+      (current) =>
+        (current - 1 + heroImages.length) % heroImages.length
+    );
+  }
+
+  async function handleStatusSearch(
+    e: FormEvent<HTMLFormElement>
+  ) {
     e.preventDefault();
 
     if (!bookingRef.trim()) return;
@@ -285,9 +341,9 @@ export default function HomePage() {
     try {
       await fetch(`${API_URL}/bookings/status?ref=${ref}`);
     } catch {
-      // Status page will perform its own lookup.
+      // Booking status page performs its own lookup.
     } finally {
-      window.location.href = `/booking-status?ref=${ref}`;
+      router.push(`/booking-status?ref=${ref}`);
     }
   }
 
@@ -304,153 +360,178 @@ export default function HomePage() {
 
     const query = params.toString();
 
-    window.location.href = query ? `/booking?${query}` : "/booking";
+    router.push(
+      query ? `/booking?${query}` : "/booking"
+    );
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-white text-[#13231d]">
+    <main className="min-h-screen overflow-x-hidden bg-[#071510] text-[#edf7f2]">
+      {/* =========================================================
+          HERO
+      ========================================================== */}
 
-      {/* ================= HEADER ================= */}
-
-      <header className="absolute left-0 right-0 top-0 z-50">
-        <div className="mx-auto flex h-[88px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-14">
-
-          <Link
-            href="/"
-            className="group flex items-center gap-3"
-          >
-            <div className="relative h-[62px] w-[82px] shrink-0">
-              <Image
-                src="/images/tdcp-logo.png.jpeg.jpeg.png"
-                alt="TDCP Logo"
-                fill
-                priority
-                sizes="82px"
-                className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
-              />
-            </div>
-
-            <div className="hidden sm:block">
-              <h1 className="text-[21px] font-black leading-none tracking-[-0.045em] text-[#10221b]">
-                BAHAWALPUR
-              </h1>
-
-              <p className="mt-1 text-[12px] font-extrabold tracking-[0.04em] text-[#10221b]">
-                DOUBLE-DECKER BUS
-              </p>
-
-              <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.18em] text-[#758079]">
-                TDCP Reservation System
-              </p>
-            </div>
-          </Link>
-
-          <nav className="hidden items-center gap-8 lg:flex">
-            <Link
-              href="/"
-              className="relative text-sm font-extrabold text-[#007456]"
-            >
-              Home
-              <span className="absolute -bottom-2 left-0 h-[2px] w-full rounded-full bg-[#007456]" />
-            </Link>
-
-            <Link
-              href="#routes"
-              className="text-sm font-semibold text-[#31413a] transition-colors duration-200 hover:text-[#007456]"
-            >
-              Routes
-            </Link>
-
-            <Link
-              href="#about"
-              className="text-sm font-semibold text-[#31413a] transition-colors duration-200 hover:text-[#007456]"
-            >
-              About
-            </Link>
-
-            <Link
-              href="#why-us"
-              className="text-sm font-semibold text-[#31413a] transition-colors duration-200 hover:text-[#007456]"
-            >
-              Why Choose Us
-            </Link>
-
-            <Link
-              href="#how-it-works"
-              className="text-sm font-semibold text-[#31413a] transition-colors duration-200 hover:text-[#007456]"
-            >
-              How It Works
-            </Link>
-          </nav>
-
-          <Link
-            href="/booking"
-            className="group inline-flex h-11 items-center gap-2 rounded-2xl bg-[#007456] px-5 text-sm font-extrabold tracking-[0.01em] text-white shadow-[0_9px_24px_rgba(0,116,86,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#005d46] hover:shadow-[0_13px_28px_rgba(0,116,86,0.24)]"
-          >
-            <Icon name="ticket" size={18} />
-            <span className="hidden sm:inline">Book Now</span>
-            <span className="transition-transform duration-300 group-hover:translate-x-0.5">
-              <Icon name="arrow" size={16} />
-            </span>
-          </Link>
-        </div>
-      </header>
-
-      {/* ================= HERO ================= */}
-
-      <section className="relative min-h-[650px] overflow-hidden rounded-b-[36px] bg-white">
-
-        <div className="pointer-events-none absolute -left-20 -top-20 z-20 h-64 w-64 rounded-full bg-[#f6f0e5]/60 blur-[75px]" />
+      <section className="relative h-[100svh] min-h-[680px] max-h-[900px] overflow-hidden bg-[#071510]">
+        {/* HERO IMAGE SLIDER */}
 
         <div className="absolute inset-0">
-          <Image
-            src="/images/hero-bUs.png.png"
-            alt="Bahawalpur Double-Decker Bus"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-[62%_center]"
-          />
-
-          {/* Soft transition only on left side */}
-          <div className="absolute inset-y-0 left-0 w-[58%] bg-gradient-to-r from-white via-white/90 to-transparent" />
-
-          <div className="absolute inset-y-0 left-0 w-[42%] bg-[#f7f1e6]/25 blur-2xl" />
-
-          <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/75 to-transparent" />
-
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white/90 to-transparent" />
+          {heroImages.map((image, index) => (
+            <div
+              key={image.src}
+              className={`absolute inset-0 transition-opacity duration-[1200ms] ease-in-out ${
+                index === currentHero
+                  ? "z-10 opacity-100"
+                  : "z-0 opacity-0"
+              }`}
+            >
+              <Image
+                src={image.src}
+                alt={image.alt}
+                fill
+                priority={index === 0}
+                sizes="100vw"
+                className="object-cover object-center"
+              />
+            </div>
+          ))}
         </div>
 
-        <div className="relative z-30 mx-auto flex min-h-[650px] max-w-[1440px] items-center px-6 pb-12 pt-24 lg:px-14">
+        {/* OVERALL IMAGE SHADE */}
 
-          <div className="max-w-[620px]">
+        <div className="absolute inset-0 z-20 bg-[#03150f]/30" />
 
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-[#007456]">
+        {/* LEFT TEXT GRADIENT */}
+
+        <div className="absolute inset-0 z-20 bg-gradient-to-r from-[#03150f]/95 via-[#03150f]/78 via-45% to-[#03150f]/15" />
+
+        {/* BOTTOM FADE */}
+
+        <div className="absolute inset-x-0 bottom-0 z-20 h-40 bg-gradient-to-t from-[#071510] via-[#071510]/55 to-transparent" />
+
+        {/* =======================================================
+            HEADER
+        ======================================================== */}
+
+        <header className="absolute left-0 right-0 top-0 z-50">
+          <div className="mx-auto flex h-[82px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-14">
+            <Link
+              href="/"
+              className="group flex items-center gap-3"
+            >
+              <div className="relative h-[58px] w-[78px] shrink-0">
+                <Image
+                  src="/images/tdcp-logo.png.jpeg.jpeg.png"
+                  alt="TDCP Logo"
+                  fill
+                  sizes="78px"
+                  className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+                  priority
+                />
+              </div>
+
+              <div className="hidden sm:block">
+                <h1 className="text-[21px] font-black leading-none tracking-[-0.045em] text-white">
+                  BAHAWALPUR
+                </h1>
+
+                <p className="mt-1 text-[12px] font-extrabold tracking-[0.04em] text-white">
+                  DOUBLE-DECKER BUS
+                </p>
+
+                <p className="mt-1 text-[8px] font-bold uppercase tracking-[0.18em] text-white/55">
+                  TDCP Reservation System
+                </p>
+              </div>
+            </Link>
+
+            <nav className="hidden items-center gap-8 lg:flex">
+              <Link
+                href="/"
+                className="relative text-sm font-extrabold text-[#55d89e]"
+              >
+                Home
+                <span className="absolute -bottom-2 left-0 h-[2px] w-full rounded-full bg-[#55d89e]" />
+              </Link>
+
+              <Link
+                href="/routes"
+                className="text-sm font-semibold text-white/75 transition-colors hover:text-white"
+              >
+                Routes
+              </Link>
+
+              <Link
+                href="#about"
+                className="text-sm font-semibold text-white/75 transition-colors hover:text-white"
+              >
+                About
+              </Link>
+
+              <Link
+                href="#why-us"
+                className="text-sm font-semibold text-white/75 transition-colors hover:text-white"
+              >
+                Why Choose Us
+              </Link>
+
+              <Link
+                href="#how-it-works"
+                className="text-sm font-semibold text-white/75 transition-colors hover:text-white"
+              >
+                How It Works
+              </Link>
+            </nav>
+
+            <Link
+              href="/booking"
+              className="group inline-flex h-11 items-center gap-2 rounded-2xl bg-[#008765] px-5 text-sm font-extrabold text-white shadow-[0_10px_30px_rgba(0,135,101,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#009b73]"
+            >
+              <Icon name="ticket" size={18} />
+
+              <span className="hidden sm:inline">
+                Book Now
+              </span>
+
+              <span className="transition-transform duration-300 group-hover:translate-x-1">
+                <Icon name="arrow" size={16} />
+              </span>
+            </Link>
+          </div>
+        </header>
+
+        {/* =======================================================
+            HERO CONTENT
+        ======================================================== */}
+
+        <div className="relative z-30 mx-auto flex min-h-[680px] max-w-[1440px] -translate-y-8 items-center px-5 pb-20 pt-28 sm:min-h-[720px] sm:px-8 sm:pt-32 lg:min-h-[760px] lg:px-14">
+          <div className="max-w-[680px]">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.28em] text-[#55d89e]">
               Bahawalpur • TDCP
             </p>
 
-            <h2 className="mt-5 max-w-[650px] text-[48px] font-black leading-[0.98] tracking-[-0.06em] text-[#10221b] sm:text-[60px] lg:text-[68px]">
+            <h2 className="mt-5 max-w-[680px] text-[42px] font-black leading-[0.94] tracking-[-0.065em] text-white sm:text-[56px] lg:text-[68px]">
               Your Journey
-              <span className="relative mt-2 block w-fit text-[#007456]">
+
+              <span className="relative mt-2 block w-fit text-[#43c98f]">
                 Starts Here
-                <span className="absolute -bottom-2 left-0 h-[3px] w-[62%] rounded-full bg-[#c8944e]/70" />
+
+                <span className="absolute -bottom-3 left-0 h-[4px] w-[60%] rounded-full bg-[#d3a15e]" />
               </span>
             </h2>
 
-            <p className="mt-6 max-w-[535px] text-[15px] font-medium leading-7 tracking-[0.005em] text-[#52615b] sm:text-[16px]">
+            <p className="mt-6 max-w-[560px] text-[14px] font-medium leading-6 text-white/75 sm:text-[16px] sm:leading-7">
               Book your seat on the{" "}
-              <strong className="font-extrabold text-[#17352a]">
+              <strong className="font-extrabold text-white">
                 Bahawalpur Double-Decker Bus
               </strong>{" "}
-              and experience a comfortable journey through Bahawalpur.
+              and experience a comfortable journey through
+              Bahawalpur.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/booking"
-                className="group inline-flex h-[54px] items-center justify-center gap-2 rounded-2xl bg-[#007456] px-7 text-sm font-extrabold tracking-[0.01em] text-white shadow-[0_12px_28px_rgba(0,116,86,0.22)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#005d46] hover:shadow-[0_16px_32px_rgba(0,116,86,0.28)]"
+                className="group inline-flex h-[54px] items-center justify-center gap-2 rounded-2xl bg-[#008765] px-7 text-sm font-extrabold text-white shadow-[0_14px_35px_rgba(0,135,101,0.28)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#009b73]"
               >
                 <Icon name="ticket" size={20} />
 
@@ -463,81 +544,135 @@ export default function HomePage() {
 
               <Link
                 href="/booking-status"
-                className="group inline-flex h-[54px] items-center justify-center gap-2 rounded-2xl border border-[#d5ded8] bg-white/90 px-7 text-sm font-extrabold tracking-[0.01em] text-[#20312a] shadow-[0_8px_22px_rgba(20,50,38,0.06)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-[#007456] hover:text-[#007456] hover:shadow-[0_12px_28px_rgba(20,50,38,0.10)]"
+                className="group inline-flex h-[54px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-[#071a13]/55 px-7 text-sm font-extrabold text-white backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-[#55d89e]/60 hover:bg-[#071a13]/75"
               >
                 <Icon name="search" size={19} />
+
                 <span>Check Booking</span>
               </Link>
-
             </div>
 
-            <div className="mt-8 flex max-w-[560px] divide-x divide-[#cbd5cf]">
+            {/* BENEFITS */}
 
+            <div className="mt-7 flex max-w-[650px] divide-x divide-white/15">
               {benefits.map((item) => (
                 <div
                   key={item.title}
                   className="flex flex-1 flex-col items-center px-3 text-center first:pl-0"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/90 bg-white/90 text-[#007456] shadow-[0_5px_15px_rgba(20,50,38,0.08)] backdrop-blur-md">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-[#071a13]/60 text-[#55d89e] backdrop-blur-md">
                     <Icon name={item.icon} size={20} />
                   </div>
 
-                  <p className="mt-2 text-[10px] font-extrabold tracking-[0.01em] text-[#1c2c25]">
+                  <p className="mt-2 text-[10px] font-extrabold text-white">
                     {item.title}
                   </p>
 
-                  <p className="text-[9px] font-semibold text-[#69756f]">
+                  <p className="text-[9px] font-semibold text-white/55">
                     {item.text}
                   </p>
                 </div>
               ))}
-
             </div>
           </div>
         </div>
+
+        {/* =======================================================
+            SLIDER CONTROLS
+        ======================================================== */}
+
+        <button
+          type="button"
+          onClick={previousHero}
+          aria-label="Previous hero image"
+          className="absolute left-4 top-1/2 z-40 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-md transition hover:bg-black/45 sm:flex"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={nextHero}
+          aria-label="Next hero image"
+          className="absolute right-4 top-1/2 z-40 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-md transition hover:bg-black/45 sm:flex"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+
+        {/* DYNAMIC DOTS */}
+
+        <div className="absolute bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/25 px-4 py-2.5 backdrop-blur-md">
+          {heroImages.map((image, index) => (
+            <button
+              key={image.src}
+              type="button"
+              onClick={() => setCurrentHero(index)}
+              aria-label={`Go to hero image ${index + 1}`}
+              className={`h-2 rounded-full transition-all duration-500 ${
+                index === currentHero
+                  ? "w-7 bg-white"
+                  : "w-2 bg-white/45 hover:bg-white/80"
+              }`}
+            />
+          ))}
+        </div>
       </section>
 
-      {/* ================= QUICK SEARCH ================= */}
+      {/* =========================================================
+          QUICK SEARCH
+      ========================================================== */}
 
-      <section className="relative z-30 -mt-9 px-5 sm:px-8 lg:px-14">
-
+      <section className="relative z-30 -mt-8 px-5 sm:px-8 lg:px-14">
         <div className="mx-auto max-w-[1320px]">
-
-          <div className="rounded-[22px] border border-[#e2e5df] bg-white p-3 shadow-[0_18px_45px_rgba(25,55,42,0.11)]">
-
+          <div className="rounded-[24px] border border-[#dce8e2] bg-white p-3 shadow-[0_20px_55px_rgba(0,0,0,0.16)]">
             <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto]">
-
-              <div className="rounded-xl border border-[#e0e5e0] bg-[#fafbf8] px-4 py-3 transition-colors hover:border-[#c9d8cf]">
-
-                <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#8a948f]">
+              <div className="rounded-xl border border-[#e2e9e5] bg-[#f8fbf9] px-4 py-3">
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#7a8982]">
                   From
                 </p>
 
                 <div className="mt-1 flex items-center gap-3">
-                  <div className="text-[#007456]">
+                  <div className="text-[#008765]">
                     <Icon name="location" size={21} />
                   </div>
 
                   <div>
-                    <p className="text-sm font-extrabold text-[#172720]">
+                    <p className="text-sm font-extrabold text-[#10251d]">
                       Bahawalpur
                     </p>
 
-                    <p className="text-[11px] font-medium text-[#7b8781]">
+                    <p className="text-[11px] font-medium text-[#7a8982]">
                       TDCP Bus Terminal
                     </p>
                   </div>
                 </div>
               </div>
 
-              <label className="rounded-xl border border-[#e0e5e0] bg-[#fafbf8] px-4 py-3 transition-colors hover:border-[#c9d8cf]">
-
-                <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#8a948f]">
+              <label className="rounded-xl border border-[#e2e9e5] bg-[#f8fbf9] px-4 py-3">
+                <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#7a8982]">
                   Travel Date
                 </span>
 
                 <div className="mt-1 flex items-center gap-3">
-                  <div className="text-[#007456]">
+                  <div className="text-[#008765]">
                     <Icon name="calendar" size={20} />
                   </div>
 
@@ -545,19 +680,18 @@ export default function HomePage() {
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-transparent text-sm font-extrabold text-[#172720] outline-none"
+                    className="w-full bg-transparent text-sm font-extrabold text-[#10251d] outline-none"
                   />
                 </div>
               </label>
 
-              <label className="rounded-xl border border-[#e0e5e0] bg-[#fafbf8] px-4 py-3 transition-colors hover:border-[#c9d8cf]">
-
-                <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#8a948f]">
+              <label className="rounded-xl border border-[#e2e9e5] bg-[#f8fbf9] px-4 py-3">
+                <span className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#7a8982]">
                   Departure Time
                 </span>
 
                 <div className="mt-1 flex items-center gap-3">
-                  <div className="text-[#007456]">
+                  <div className="text-[#008765]">
                     <Icon name="clock" size={20} />
                   </div>
 
@@ -565,7 +699,7 @@ export default function HomePage() {
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full bg-transparent text-sm font-extrabold text-[#172720] outline-none"
+                    className="w-full bg-transparent text-sm font-extrabold text-[#10251d] outline-none"
                   />
                 </div>
               </label>
@@ -573,7 +707,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={handleSearchBuses}
-                className="group flex min-h-[68px] items-center justify-center gap-2 rounded-2xl bg-[#007456] px-7 text-sm font-extrabold tracking-[0.01em] text-white shadow-[0_10px_24px_rgba(0,116,86,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#005d46] hover:shadow-[0_14px_30px_rgba(0,116,86,0.23)]"
+                className="group flex min-h-[68px] items-center justify-center gap-2 rounded-2xl bg-[#008765] px-7 text-sm font-extrabold text-white shadow-[0_10px_25px_rgba(0,135,101,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#009b73]"
               >
                 <span>Search Buses</span>
 
@@ -581,43 +715,42 @@ export default function HomePage() {
                   <Icon name="arrow" size={19} />
                 </span>
               </button>
-
             </div>
           </div>
         </div>
       </section>
 
-      {/* ================= ROUTES ================= */}
+      {/* =========================================================
+          ROUTES
+      ========================================================== */}
 
       <section
         id="routes"
-        className="scroll-mt-20 px-5 py-20 sm:px-8 lg:px-14"
+        className="scroll-mt-20 bg-[#f7f8f5] px-5 py-20 text-[#10251d] sm:px-8 lg:px-14"
       >
-
         <div className="mx-auto max-w-[1320px]">
-
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#007456]">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#008765]">
                 Our Routes
               </p>
 
-              <h2 className="mt-3 text-3xl font-black leading-[1.05] tracking-[-0.055em] text-[#12231c] sm:text-4xl lg:text-[42px]">
+              <h2 className="mt-3 text-3xl font-black tracking-[-0.055em] sm:text-4xl lg:text-[42px]">
                 Choose your journey
               </h2>
 
-              <p className="mt-3 max-w-[620px] text-sm font-medium leading-7 text-[#69766f]">
+              <p className="mt-3 max-w-[620px] text-sm font-medium leading-7 text-[#6e7d76]">
                 Select a regular sightseeing route or reserve the complete
                 double-decker bus for your school, family or group.
               </p>
             </div>
 
             <Link
-              href="/booking"
-              className="group inline-flex h-11 w-fit items-center gap-2 rounded-2xl border border-[#d5dfd8] bg-white px-5 text-sm font-extrabold text-[#007456] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#007456] hover:bg-[#f2f8f4]"
+              href="/routes"
+              className="group inline-flex h-11 w-fit items-center gap-2 rounded-2xl border border-[#cbdad3] bg-white px-5 text-sm font-extrabold text-[#008765] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#008765]"
             >
-              View Booking
+              View Routes
+
               <span className="transition-transform duration-300 group-hover:translate-x-1">
                 <Icon name="arrow" size={17} />
               </span>
@@ -625,34 +758,31 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-
             {routes.map((route) => (
               <article
                 key={route.number}
-                className={`group flex flex-col overflow-hidden rounded-[20px] border bg-white shadow-[0_10px_30px_rgba(20,55,40,0.055)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(20,55,40,0.10)] ${
+                className={`group flex flex-col overflow-hidden rounded-[22px] border bg-white shadow-[0_8px_30px_rgba(15,40,30,0.07)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,40,30,0.12)] ${
                   route.type === "bus"
-                    ? "border-[#b8d8c5]"
-                    : "border-[#e0e5df]"
+                    ? "border-[#83cdb0]"
+                    : "border-[#e0e8e3]"
                 }`}
               >
-
                 <div
                   className={`flex items-center justify-between px-5 py-4 ${
                     route.type === "bus"
-                      ? "bg-[#edf8f1]"
-                      : "bg-[#f6f8f5]"
+                      ? "bg-[#e4f5ed]"
+                      : "bg-[#f5f9f6]"
                   }`}
                 >
-
-                  <span className="text-[28px] font-black tracking-[-0.06em] text-[#d3dcd6]">
+                  <span className="text-[28px] font-black tracking-[-0.06em] text-[#bfd2c8]">
                     {route.number}
                   </span>
 
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-full ${
                       route.type === "bus"
-                        ? "bg-[#007456] text-white"
-                        : "bg-white text-[#007456]"
+                        ? "bg-[#008765] text-white"
+                        : "bg-[#e1f2ea] text-[#008765]"
                     }`}
                   >
                     <Icon
@@ -663,39 +793,36 @@ export default function HomePage() {
                 </div>
 
                 <div className="flex flex-1 flex-col p-5">
-
-                  <p className="text-[9px] font-extrabold uppercase tracking-[0.19em] text-[#007456]">
+                  <p className="text-[9px] font-extrabold uppercase tracking-[0.19em] text-[#008765]">
                     {route.shortName}
                   </p>
 
-                  <h3 className="mt-2 text-lg font-black leading-[1.2] tracking-[-0.02em] text-[#14251e]">
+                  <h3 className="mt-2 text-lg font-black leading-[1.2] tracking-[-0.02em] text-[#10251d]">
                     {route.name}
                   </h3>
 
-                  <p className="mt-3 min-h-[66px] text-[12px] font-medium leading-5 text-[#6c7972]">
+                  <p className="mt-3 min-h-[66px] text-[12px] font-medium leading-5 text-[#718079]">
                     {route.description}
                   </p>
 
-                  <div className="mt-5 border-t border-[#edf0ec] pt-4">
-
-                    <p className="text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#8a958f]">
+                  <div className="mt-5 border-t border-[#e7ede9] pt-4">
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#82918a]">
                       {route.priceLabel}
                     </p>
 
-                    <p className="mt-1 text-2xl font-black tracking-[-0.045em] text-[#007456]">
+                    <p className="mt-1 text-2xl font-black tracking-[-0.045em] text-[#008765]">
                       {route.price}
                     </p>
 
                     {route.type === "bus" && (
-                      <p className="mt-1 text-[10px] font-bold text-[#65736c]">
+                      <p className="mt-1 text-[10px] font-bold text-[#789087]">
                         Private full-day bus reservation
                       </p>
                     )}
                   </div>
 
                   <div className="mt-5">
-
-                    <p className="text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#8b9690]">
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.13em] text-[#82918a]">
                       Main Stops
                     </p>
 
@@ -703,14 +830,14 @@ export default function HomePage() {
                       {route.stops.slice(0, 4).map((stop) => (
                         <span
                           key={stop}
-                          className="rounded-full bg-[#f2f5f1] px-2.5 py-1 text-[9px] font-semibold text-[#52615a]"
+                          className="rounded-full bg-[#edf5f1] px-2.5 py-1 text-[9px] font-semibold text-[#62736b]"
                         >
                           {stop}
                         </span>
                       ))}
 
                       {route.stops.length > 4 && (
-                        <span className="rounded-full bg-[#f2f5f1] px-2.5 py-1 text-[9px] font-extrabold text-[#007456]">
+                        <span className="rounded-full bg-[#e1f3eb] px-2.5 py-1 text-[9px] font-extrabold text-[#008765]">
                           +{route.stops.length - 4} more
                         </span>
                       )}
@@ -725,8 +852,8 @@ export default function HomePage() {
                     }
                     className={`group mt-6 inline-flex h-11 items-center justify-center gap-2 rounded-xl text-xs font-extrabold transition-all duration-300 ${
                       route.type === "bus"
-                        ? "bg-[#007456] text-white shadow-[0_8px_20px_rgba(0,116,86,0.16)] hover:-translate-y-0.5 hover:bg-[#005d46] hover:shadow-[0_12px_25px_rgba(0,116,86,0.22)]"
-                        : "border border-[#cfe0d5] bg-[#f4faf6] text-[#007456] hover:-translate-y-0.5 hover:border-[#007456] hover:bg-[#e9f5ed]"
+                        ? "bg-[#008765] text-white hover:-translate-y-0.5 hover:bg-[#009b73]"
+                        : "border border-[#b9d7ca] bg-[#f2f9f5] text-[#008765] hover:-translate-y-0.5 hover:border-[#008765] hover:bg-[#e7f5ee]"
                     }`}
                   >
                     {route.type === "bus"
@@ -737,39 +864,35 @@ export default function HomePage() {
                       <Icon name="arrow" size={16} />
                     </span>
                   </Link>
-
                 </div>
               </article>
             ))}
           </div>
-
         </div>
       </section>
 
-      {/* ================= BOOKING STATUS ================= */}
+      {/* =========================================================
+          BOOKING STATUS
+      ========================================================== */}
 
-      <section className="px-5 pb-20 sm:px-8 lg:px-14">
-
+      <section className="bg-white px-5 py-8 sm:px-8 lg:px-14">
         <div className="mx-auto max-w-[1320px]">
-
-          <div className="flex flex-col gap-6 rounded-[22px] border border-[#d7e4db] bg-[#edf7ef] p-6 shadow-sm lg:flex-row lg:items-center lg:justify-between lg:px-8">
-
+          <div className="flex flex-col gap-6 rounded-[22px] border border-[#dce8e2] bg-[#f5faf7] p-6 shadow-[0_10px_30px_rgba(15,40,30,0.06)] lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <div className="flex items-center gap-4">
-
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-[#007456] shadow-sm">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#e0f3ea] text-[#008765]">
                 <Icon name="ticket" size={23} />
               </div>
 
               <div>
-                <p className="text-[9px] font-extrabold uppercase tracking-[0.22em] text-[#007456]">
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.22em] text-[#008765]">
                   Existing Booking
                 </p>
 
-                <h3 className="mt-1 text-lg font-black tracking-[-0.02em] text-[#172720]">
+                <h3 className="mt-1 text-lg font-black text-[#10251d]">
                   Check your booking status
                 </h3>
 
-                <p className="mt-1 text-xs font-medium leading-5 text-[#617069]">
+                <p className="mt-1 text-xs font-medium leading-5 text-[#718079]">
                   Enter your booking reference, phone number or email.
                 </p>
               </div>
@@ -779,10 +902,8 @@ export default function HomePage() {
               onSubmit={handleStatusSearch}
               className="flex w-full max-w-[580px] flex-col gap-2.5 sm:flex-row"
             >
-
-              <div className="flex h-[50px] flex-1 items-center gap-3 rounded-xl border border-[#d5e1d8] bg-white px-4 transition-colors focus-within:border-[#007456]">
-
-                <div className="text-[#007456]">
+              <div className="flex h-[50px] flex-1 items-center gap-3 rounded-xl border border-[#d6e3dd] bg-white px-4 focus-within:border-[#008765]">
+                <div className="text-[#008765]">
                   <Icon name="search" size={20} />
                 </div>
 
@@ -790,114 +911,105 @@ export default function HomePage() {
                   value={bookingRef}
                   onChange={(e) => setBookingRef(e.target.value)}
                   placeholder="Booking reference, phone, or email"
-                  className="w-full bg-transparent text-xs font-semibold outline-none placeholder:text-[#929c97]"
+                  className="w-full bg-transparent text-xs font-semibold text-[#10251d] outline-none placeholder:text-[#9aa8a1]"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={statusLoading}
-                className="h-[50px] rounded-xl bg-[#007456] px-6 text-xs font-extrabold text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#005d46] disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-[50px] rounded-xl bg-[#008765] px-6 text-xs font-extrabold text-white transition-all duration-300 hover:bg-[#009b73] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {statusLoading ? "Checking..." : "Check Status"}
               </button>
-
             </form>
           </div>
         </div>
       </section>
 
-      {/* ================= ABOUT ================= */}
+      {/* =========================================================
+          ABOUT
+      ========================================================== */}
 
       <section
         id="about"
-        className="scroll-mt-20 border-y border-[#eceee9] bg-white px-5 py-20 sm:px-8 lg:px-14"
+        className="scroll-mt-20 bg-[#f7f8f5] px-5 py-20 sm:px-8 lg:px-14"
       >
-
         <div className="mx-auto grid max-w-[1320px] gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-
           <div>
-
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#007456]">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#008765]">
               About The Service
             </p>
 
-            <h2 className="mt-4 text-4xl font-black leading-[1.02] tracking-[-0.06em] text-[#10221b] sm:text-5xl">
+            <h2 className="mt-4 text-4xl font-black leading-[1.02] tracking-[-0.06em] text-[#10251d] sm:text-5xl">
               A smarter way to
-              <span className="block text-[#007456]">
+              <span className="block text-[#008765]">
                 book your journey.
               </span>
             </h2>
 
-            <p className="mt-5 max-w-[500px] text-sm font-medium leading-7 text-[#69766f]">
-              Simple online booking designed specifically for the Bahawalpur
-              Double-Decker Bus experience.
+            <p className="mt-5 max-w-[500px] text-sm font-medium leading-7 text-[#718079]">
+              Simple online booking designed specifically for the
+              Bahawalpur Double-Decker Bus experience.
             </p>
           </div>
 
-          <div className="rounded-[20px] border border-[#e2e6e1] bg-[#fafbf8] p-7 shadow-[0_8px_25px_rgba(20,55,40,0.035)]">
-
-            <div className="border-l-[3px] border-[#007456] pl-6">
-
-              <p className="text-[15px] font-medium leading-8 text-[#5e6d66]">
-                The Bahawalpur Double-Decker Bus reservation system provides
-                visitors with a convenient way to select a route, choose an
-                available schedule, select seats where applicable and complete
-                their booking online.
+          <div className="rounded-[22px] border border-[#dce8e2] bg-white p-7 shadow-[0_10px_30px_rgba(15,40,30,0.06)]">
+            <div className="border-l-[3px] border-[#008765] pl-6">
+              <p className="text-[15px] font-medium leading-8 text-[#5e7068]">
+                The Bahawalpur Double-Decker Bus reservation system
+                provides visitors with a convenient way to select a
+                route, choose an available schedule, select seats
+                where applicable and complete their booking online.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-2">
-
-                <span className="rounded-full bg-[#eaf5ef] px-4 py-2 text-[10px] font-extrabold text-[#007456]">
+                <span className="rounded-full bg-[#e6f4ed] px-4 py-2 text-[10px] font-extrabold text-[#008765]">
                   Scheduled Tours
                 </span>
 
-                <span className="rounded-full bg-[#eaf5ef] px-4 py-2 text-[10px] font-extrabold text-[#007456]">
+                <span className="rounded-full bg-[#e6f4ed] px-4 py-2 text-[10px] font-extrabold text-[#008765]">
                   Upper & Lower Deck
                 </span>
 
-                <span className="rounded-full bg-[#eaf5ef] px-4 py-2 text-[10px] font-extrabold text-[#007456]">
+                <span className="rounded-full bg-[#e6f4ed] px-4 py-2 text-[10px] font-extrabold text-[#008765]">
                   Online Reservation
                 </span>
 
-                <span className="rounded-full bg-[#eaf5ef] px-4 py-2 text-[10px] font-extrabold text-[#007456]">
+                <span className="rounded-full bg-[#e6f4ed] px-4 py-2 text-[10px] font-extrabold text-[#008765]">
                   Full Bus Booking
                 </span>
-
               </div>
             </div>
           </div>
-
         </div>
       </section>
 
-      {/* ================= WHY CHOOSE US ================= */}
+      {/* =========================================================
+          WHY CHOOSE US
+      ========================================================== */}
 
       <section
         id="why-us"
-        className="scroll-mt-20 bg-[#f7f8f5] px-5 py-20 sm:px-8 lg:px-14"
+        className="scroll-mt-20 bg-[#071510] px-5 py-20 sm:px-8 lg:px-14"
       >
-
         <div className="mx-auto max-w-[1320px]">
-
           <div className="max-w-[650px]">
-
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#007456]">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#55d89e]">
               Why Choose Us
             </p>
 
-            <h2 className="mt-3 text-4xl font-black leading-[1.05] tracking-[-0.06em] text-[#10221b]">
+            <h2 className="mt-3 text-4xl font-black leading-[1.05] tracking-[-0.06em] text-white">
               Designed for a better journey.
             </h2>
 
-            <p className="mt-3 max-w-[620px] text-sm font-medium leading-7 text-[#69766f]">
-              Everything is designed to make your booking simple, clear and
-              convenient.
+            <p className="mt-3 max-w-[620px] text-sm font-medium leading-7 text-[#82958d]">
+              Everything is designed to make your booking simple,
+              clear and convenient.
             </p>
           </div>
 
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-
             {[
               {
                 icon: "seat",
@@ -922,55 +1034,52 @@ export default function HomePage() {
             ].map((item) => (
               <article
                 key={item.title}
-                className="group rounded-[20px] border border-[#e0e5df] bg-white p-6 shadow-[0_8px_25px_rgba(20,55,40,0.035)] transition-all duration-300 hover:-translate-y-1 hover:border-[#cfe0d5] hover:shadow-[0_16px_35px_rgba(20,55,40,0.08)]"
+                className="group rounded-[20px] border border-[#273f35] bg-[#10231c] p-6 shadow-[0_8px_25px_rgba(0,0,0,0.18)] transition-all duration-300 hover:-translate-y-1 hover:border-[#35614f]"
               >
-
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#e8f5ed] text-[#007456] transition-transform duration-300 group-hover:scale-105">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#18392d] text-[#55d89e] transition-transform duration-300 group-hover:scale-105">
                   <Icon name={item.icon} size={24} />
                 </div>
 
-                <h3 className="mt-5 text-base font-black tracking-[-0.01em] text-[#172720]">
+                <h3 className="mt-5 text-base font-black text-white">
                   {item.title}
                 </h3>
 
-                <p className="mt-2 text-xs font-medium leading-6 text-[#69766f]">
+                <p className="mt-2 text-xs font-medium leading-6 text-[#82958d]">
                   {item.text}
                 </p>
-
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ================= HOW IT WORKS ================= */}
+      {/* =========================================================
+          HOW IT WORKS
+      ========================================================== */}
 
       <section
         id="how-it-works"
-        className="scroll-mt-20 bg-white px-5 py-20 sm:px-8 lg:px-14"
+        className="scroll-mt-20 bg-[#f7f8f5] px-5 py-20 text-[#10251d] sm:px-8 lg:px-14"
       >
-
         <div className="mx-auto max-w-[1320px]">
-
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#007456]">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#008765]">
                 How It Works
               </p>
 
-              <h2 className="mt-3 text-4xl font-black leading-[1.05] tracking-[-0.06em] text-[#10221b]">
+              <h2 className="mt-3 text-4xl font-black leading-[1.05] tracking-[-0.06em]">
                 Five simple steps.
               </h2>
 
-              <p className="mt-3 text-sm font-medium leading-7 text-[#69766f]">
+              <p className="mt-3 text-sm font-medium leading-7 text-[#718079]">
                 From selecting your route to checking your confirmation.
               </p>
             </div>
 
             <Link
               href="/booking"
-              className="group inline-flex h-11 w-fit items-center gap-2 rounded-2xl bg-[#007456] px-6 text-xs font-extrabold text-white shadow-[0_8px_20px_rgba(0,116,86,0.15)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#005d46] hover:shadow-[0_12px_25px_rgba(0,116,86,0.22)]"
+              className="group inline-flex h-11 w-fit items-center gap-2 rounded-2xl bg-[#008765] px-6 text-xs font-extrabold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#009b73]"
             >
               Start Booking
 
@@ -978,46 +1087,40 @@ export default function HomePage() {
                 <Icon name="arrow" size={17} />
               </span>
             </Link>
-
           </div>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-5">
-
             {steps.map((step) => (
               <article
                 key={step.number}
-                className="group rounded-[18px] border border-[#e1e5e0] bg-[#fafbf8] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#cfe0d5] hover:bg-white hover:shadow-[0_12px_30px_rgba(20,55,40,0.07)]"
+                className="group rounded-[18px] border border-[#dce8e2] bg-white p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(15,40,30,0.08)]"
               >
-
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#007456] text-xs font-extrabold text-white shadow-sm">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#008765] text-xs font-extrabold text-white">
                   {step.number}
                 </div>
 
-                <h3 className="mt-5 text-sm font-black tracking-[-0.01em] text-[#172720]">
+                <h3 className="mt-5 text-sm font-black">
                   {step.title}
                 </h3>
 
-                <p className="mt-2 text-xs font-medium leading-6 text-[#707c76]">
+                <p className="mt-2 text-xs font-medium leading-6 text-[#718079]">
                   {step.text}
                 </p>
-
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ================= FINAL CTA ================= */}
+      {/* =========================================================
+          FINAL CTA
+      ========================================================== */}
 
       <section className="bg-[#f7f8f5] px-5 py-14 sm:px-8 lg:px-14">
-
         <div className="mx-auto max-w-[1320px]">
-
-          <div className="relative overflow-hidden rounded-[26px] bg-[#00543f] px-7 py-11 shadow-[0_18px_45px_rgba(0,70,50,0.16)] sm:px-10 lg:px-14">
-
+          <div className="relative overflow-hidden rounded-[26px] bg-[#064f3c] px-7 py-11 shadow-[0_18px_45px_rgba(0,0,0,0.20)] sm:px-10 lg:px-14">
             <div className="relative z-10 max-w-[700px]">
-
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#75dca7]">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#75e4b0]">
                 Plan Your Journey
               </p>
 
@@ -1026,13 +1129,13 @@ export default function HomePage() {
               </h2>
 
               <p className="mt-4 max-w-[600px] text-sm font-medium leading-7 text-white/65">
-                Choose a regular seat-based route or reserve the complete bus
-                for your school, family or group.
+                Choose a regular seat-based route or reserve the
+                complete bus for your school, family or group.
               </p>
 
               <Link
                 href="/booking"
-                className="group mt-6 inline-flex h-11 items-center gap-2 rounded-2xl bg-white px-6 text-xs font-extrabold text-[#00543f] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#edf7f1]"
+                className="group mt-6 inline-flex h-11 items-center gap-2 rounded-2xl bg-white px-6 text-xs font-extrabold text-[#064f3c] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#eaf7f0]"
               >
                 Book Your Journey
 
@@ -1040,46 +1143,39 @@ export default function HomePage() {
                   <Icon name="arrow" size={17} />
                 </span>
               </Link>
-
             </div>
 
-            <div className="absolute -right-16 -top-20 h-60 w-60 rounded-full bg-[#168664]/45 blur-3xl" />
+            <div className="absolute -right-16 -top-20 h-60 w-60 rounded-full bg-[#168664]/35 blur-3xl" />
 
-            <div className="absolute -bottom-32 right-32 h-64 w-64 rounded-full bg-[#0b7556]/35 blur-3xl" />
-
+            <div className="absolute -bottom-32 right-32 h-64 w-64 rounded-full bg-[#0b7556]/30 blur-3xl" />
           </div>
         </div>
       </section>
 
-      {/* ================= FOOTER ================= */}
+      {/* =========================================================
+          FOOTER
+      ========================================================== */}
 
       <footer
         id="contact"
-        className="scroll-mt-20 bg-[#003f30] px-5 py-11 text-white sm:px-8 lg:px-14"
+        className="scroll-mt-20 bg-[#03100c] px-5 py-11 text-white sm:px-8 lg:px-14"
       >
-
         <div className="mx-auto max-w-[1320px]">
-
           <div className="grid gap-10 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
-
             <div>
-
               <div className="flex items-center gap-4">
-
                 <div className="relative h-[58px] w-[75px] shrink-0 rounded-xl bg-white p-1">
-
                   <Image
                     src="/images/tdcp-logo.png.jpeg.jpeg.png"
                     alt="TDCP Logo"
                     fill
                     sizes="75px"
-                    className="object-contain"
+                    className="rounded-lg object-contain"
                   />
-
                 </div>
 
                 <div>
-                  <p className="text-sm font-black tracking-[-0.01em]">
+                  <p className="text-sm font-black">
                     Bahawalpur Double-Decker Bus
                   </p>
 
@@ -1087,114 +1183,99 @@ export default function HomePage() {
                     TDCP Reservation System
                   </p>
                 </div>
-
               </div>
 
-              <p className="mt-5 max-w-md text-xs font-medium leading-7 text-white/55">
-                A convenient online reservation experience for Bahawalpur
-                Double-Decker Bus tours and complete bus bookings.
+              <p className="mt-5 max-w-md text-xs font-medium leading-7 text-white/45">
+                A convenient online reservation experience for
+                Bahawalpur Double-Decker Bus tours and complete bus
+                bookings.
               </p>
-
             </div>
 
             <div>
-
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-white/40">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-white/35">
                 Navigation
               </p>
 
               <div className="mt-4 flex flex-col gap-3 text-xs">
-
                 <Link
                   href="/"
-                  className="font-semibold text-white/65 transition-colors hover:text-white"
+                  className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   Home
                 </Link>
 
                 <Link
-                  href="#routes"
-                  className="font-semibold text-white/65 transition-colors hover:text-white"
+                  href="/routes"
+                  className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   Routes
                 </Link>
 
                 <Link
                   href="#about"
-                  className="font-semibold text-white/65 transition-colors hover:text-white"
+                  className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   About
                 </Link>
 
                 <Link
                   href="#why-us"
-                  className="font-semibold text-white/65 transition-colors hover:text-white"
+                  className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   Why Choose Us
                 </Link>
 
                 <Link
                   href="#how-it-works"
-                  className="font-semibold text-white/65 transition-colors hover:text-white"
+                  className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   How It Works
                 </Link>
-
               </div>
             </div>
 
             <div>
-
-              <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-white/40">
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.24em] text-white/35">
                 Service
               </p>
 
               <div className="mt-4 flex flex-col gap-3 text-xs">
-
                 <Link
                   href="/booking"
-                  className="font-semibold text-white/65 transition-colors hover:text-white"
+                  className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   Reserve a Seat
                 </Link>
 
                 <Link
                   href="/booking?route=04&type=complete-bus"
-                  className="font-semibold text-white/65 transition-colors hover:text-white"
+                  className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   Book Complete Bus
                 </Link>
 
                 <Link
                   href="/booking-status"
-                  className="font-semibold text-white/65 transition-colors hover:text-white"
+                  className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   Booking Status
                 </Link>
 
-                <p className="font-semibold text-white/45">
+                <p className="font-semibold text-white/40">
                   Bahawalpur, Punjab
                 </p>
-
               </div>
             </div>
-
           </div>
 
-          <div className="mt-9 flex flex-col gap-2 border-t border-white/10 pt-5 text-[10px] font-medium text-white/35 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-9 flex flex-col gap-2 border-t border-white/10 pt-5 text-[10px] font-medium text-white/25 sm:flex-row sm:items-center sm:justify-between">
+            <p>Bahawalpur Double-Decker Bus Reservation System</p>
 
-            <p>
-              Bahawalpur Double-Decker Bus Reservation System
-            </p>
-
-            <p>
-              TDCP • Punjab, Pakistan
-            </p>
-
+            <p>TDCP • Punjab, Pakistan</p>
           </div>
         </div>
       </footer>
-
     </main>
   );
 }

@@ -8,8 +8,28 @@
   ScheduleSeatsResponse,
 } from "@/lib/api-types";
 
+/* =========================
+   Admin Authentication
+========================= */
+
+export interface AdminLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AdminLoginResponse {
+  token: string;
+  admin_id: string;
+  name: string;
+  email: string;
+}
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+/* =========================
+   Generic API Types
+========================= */
 
 export interface ApiErrorPayload {
   code: string;
@@ -41,6 +61,10 @@ export class ApiRequestError extends Error {
   }
 }
 
+/* =========================
+   URL Helper
+========================= */
+
 function buildUrl(path: string): string {
   if (!path.startsWith("/")) {
     throw new Error("API path must start with '/'.");
@@ -48,6 +72,10 @@ function buildUrl(path: string): string {
 
   return `${API_BASE_URL}${path}`;
 }
+
+/* =========================
+   Response Parser
+========================= */
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") ?? "";
@@ -89,6 +117,26 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body.data;
 }
 
+/* =========================
+   Admin Login
+========================= */
+
+/**
+ * POST /admin/login
+ */
+export async function adminLogin(
+  request: AdminLoginRequest,
+): Promise<AdminLoginResponse> {
+  return apiFetch<AdminLoginResponse>("/admin/login", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+/* =========================
+   Public Schedules
+========================= */
+
 /**
  * GET /schedules?date=YYYY-MM-DD
  */
@@ -115,6 +163,10 @@ export async function getScheduleSeats(
   );
 }
 
+/* =========================
+   Booking
+========================= */
+
 /**
  * POST /bookings/hold
  */
@@ -140,10 +192,7 @@ export async function createBooking(
 }
 
 /**
- * GET /bookings/status?ref|phone|email
- *
- * The booking status endpoint accepts one lookup value.
- * The value is sent as the `ref` query parameter.
+ * GET /bookings/status?ref=...
  */
 export async function getBookingStatus(
   query: string,
@@ -167,6 +216,10 @@ export async function getBookingStatus(
   );
 }
 
+/* =========================
+   Generic API Request
+========================= */
+
 /**
  * Real backend API request helper.
  */
@@ -185,6 +238,10 @@ export async function apiFetch<T>(
 
   return parseResponse<T>(response);
 }
+
+/* =========================
+   Multipart Upload
+========================= */
 
 /**
  * Multipart upload helper.

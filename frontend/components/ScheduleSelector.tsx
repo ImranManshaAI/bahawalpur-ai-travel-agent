@@ -89,7 +89,7 @@ export default function ScheduleSelector() {
     return (
       schedules.find(
         (schedule) =>
-          schedule.date === date &&
+          schedule.travel_date === date &&
           schedule.timing_slot === time
       ) || null
     );
@@ -130,7 +130,7 @@ export default function ScheduleSelector() {
         )}&time=${encodeURIComponent(
           time
         )}&schedule=${encodeURIComponent(
-          matchingSchedule.id
+          matchingSchedule.schedule_instance_id
         )}`
       );
     } catch {
@@ -143,7 +143,6 @@ export default function ScheduleSelector() {
   return (
     <section className="relative z-40 px-4 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-[1320px]">
-        {/* ================= MAIN CARD ================= */}
         <div
           className="
             overflow-hidden
@@ -153,7 +152,7 @@ export default function ScheduleSelector() {
             shadow-[0_18px_50px_rgba(15,55,40,0.10)]
           "
         >
-          {/* ================= STEPS ================= */}
+          {/* STEPS */}
           <div className="border-b border-[#edf1ee] bg-white px-3 py-3 sm:px-5 lg:px-7">
             <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 lg:gap-3">
               {STEPS.map((step, index) => {
@@ -175,7 +174,6 @@ export default function ScheduleSelector() {
                       }
                     `}
                   >
-                    {/* NUMBER */}
                     <div
                       className={`
                         flex h-8 w-8 shrink-0 items-center justify-center
@@ -192,7 +190,6 @@ export default function ScheduleSelector() {
                       {index + 1}
                     </div>
 
-                    {/* DESKTOP TEXT */}
                     <div className="hidden min-w-0 sm:block">
                       <p
                         className={`
@@ -231,7 +228,6 @@ export default function ScheduleSelector() {
                       </p>
                     </div>
 
-                    {/* MOBILE */}
                     <span
                       className={`
                         text-[9px] font-extrabold sm:hidden
@@ -250,10 +246,10 @@ export default function ScheduleSelector() {
             </div>
           </div>
 
-          {/* ================= SEARCH AREA ================= */}
+          {/* SEARCH AREA */}
           <div className="p-4 sm:p-5 lg:p-6">
             <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_190px]">
-              {/* ================= FROM ================= */}
+              {/* FROM */}
               <div
                 className="
                   group
@@ -323,7 +319,7 @@ export default function ScheduleSelector() {
                 </div>
               </div>
 
-              {/* ================= DATE ================= */}
+              {/* DATE */}
               <label
                 className="
                   group
@@ -391,7 +387,7 @@ export default function ScheduleSelector() {
                 </div>
               </label>
 
-              {/* ================= TIME ================= */}
+              {/* TIME */}
               <label
                 className="
                   group
@@ -459,7 +455,7 @@ export default function ScheduleSelector() {
                 </div>
               </label>
 
-              {/* ================= SEARCH BUTTON ================= */}
+              {/* SEARCH BUTTON */}
               <button
                 type="button"
                 onClick={handleSearch}
@@ -484,7 +480,6 @@ export default function ScheduleSelector() {
                   disabled:opacity-60
                 "
               >
-                {/* SUBTLE BUTTON GLOW */}
                 <span
                   className="
                     pointer-events-none
@@ -533,7 +528,7 @@ export default function ScheduleSelector() {
               </button>
             </div>
 
-            {/* ================= ERROR ================= */}
+            {/* ERROR */}
             {error && (
               <div
                 className="
@@ -551,7 +546,7 @@ export default function ScheduleSelector() {
               </div>
             )}
 
-            {/* ================= SELECTED SCHEDULE ================= */}
+            {/* SELECTED SCHEDULE */}
             {selectedSchedule && !error && (
               <div
                 className="

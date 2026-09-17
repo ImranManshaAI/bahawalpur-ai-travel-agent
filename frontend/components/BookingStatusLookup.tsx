@@ -42,6 +42,14 @@ function getStatusBadgeClass(status: string): string {
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
 
+function formatPaymentStatus(status: string | null | undefined): string {
+  if (!status) {
+    return "Not available";
+  }
+
+  return formatBookingStatus(status);
+}
+
 export default function BookingStatusLookup() {
   const [query, setQuery] = useState("");
   const [booking, setBooking] = useState<BookingStatusResponse | null>(null);
@@ -179,8 +187,9 @@ export default function BookingStatusLookup() {
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Travel date
                 </dt>
+
                 <dd className="mt-1 text-sm font-medium text-slate-900">
-                  {booking.date}
+                  {booking.travel_date}
                 </dd>
               </div>
 
@@ -188,6 +197,7 @@ export default function BookingStatusLookup() {
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Departure
                 </dt>
+
                 <dd className="mt-1 text-sm font-medium text-slate-900">
                   {booking.timing_slot}
                 </dd>
@@ -197,9 +207,15 @@ export default function BookingStatusLookup() {
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Seats
                 </dt>
+
                 <dd className="mt-1 text-sm font-medium text-slate-900">
-                  {booking.seat_numbers.length > 0
-                    ? booking.seat_numbers.join(", ")
+                  {booking.seats.length > 0
+                    ? booking.seats
+                        .map(
+                          (seat) =>
+                            `${seat.deck} - Seat ${seat.seat_number}`,
+                        )
+                        .join(", ")
                     : "Not assigned"}
                 </dd>
               </div>
@@ -208,6 +224,7 @@ export default function BookingStatusLookup() {
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Passengers
                 </dt>
+
                 <dd className="mt-1 text-sm font-medium text-slate-900">
                   {booking.passenger_count}
                 </dd>
@@ -217,6 +234,7 @@ export default function BookingStatusLookup() {
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Total price
                 </dt>
+
                 <dd className="mt-1 text-base font-bold text-slate-950">
                   {formatCurrency(booking.total_price)}
                 </dd>
@@ -226,17 +244,28 @@ export default function BookingStatusLookup() {
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Payment status
                 </dt>
+
                 <dd className="mt-1">
                   <span
                     className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusBadgeClass(
-                      booking.payment_status,
+                      booking.payment_status ?? "",
                     )}`}
                   >
-                    {formatBookingStatus(booking.payment_status)}
+                    {formatPaymentStatus(booking.payment_status)}
                   </span>
                 </dd>
               </div>
             </dl>
+
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Status message
+              </p>
+
+              <p className="mt-1 text-sm leading-6 text-slate-700">
+                {booking.status_message}
+              </p>
+            </div>
           </div>
         </div>
       )}

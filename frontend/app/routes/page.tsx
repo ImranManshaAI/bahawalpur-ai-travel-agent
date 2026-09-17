@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { routes } from "@/lib/routes";
 
@@ -21,36 +22,22 @@ function ArrowIcon() {
   );
 }
 
-function MapPinIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M20 10.5c0 5.5-8 10.5-8 10.5S4 16 4 10.5a8 8 0 1 1 16 0Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <circle cx="12" cy="10" r="2.3" stroke="currentColor" strokeWidth="2" />
-    </svg>
-  );
-}
-
 export default function RoutesPage() {
   return (
     <main className="min-h-screen bg-[#f7f3e9] text-[#10231f]">
       <header className="border-b border-black/[0.06] bg-[#fffdf8]/95">
         <div className="mx-auto flex min-h-[88px] max-w-[1280px] items-center gap-6 px-5 sm:px-8 lg:px-12">
           <Link href="/" className="shrink-0">
-            <img
-              src="/images/tdcp-logo.png.jpeg.jpeg.png"
-              alt="TDCP Bahawalpur Double-Decker Bus"
-              className="h-[72px] w-auto object-contain"
-            />
+            <div className="relative h-[72px] w-[82px] shrink-0">
+              <Image
+                src="/images/tdcp-logo.png.jpeg.jpeg.png"
+                alt="TDCP Bahawalpur Double-Decker Bus"
+                fill
+                sizes="82px"
+                className="object-contain"
+                priority
+              />
+            </div>
           </Link>
 
           <nav className="ml-auto flex items-center gap-5 sm:gap-8">

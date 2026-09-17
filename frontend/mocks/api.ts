@@ -11,37 +11,39 @@ import { MOCK_SCHEDULE_SEATS } from "@/mocks/seats";
 
 const MOCK_SCHEDULES: ScheduleResponse[] = [
   {
-    id: "schedule-001",
-    date: "2026-09-15",
+    schedule_instance_id: "schedule-001",
+    route_id: "route-bwp-lhr-001",
+    route_name: "Bahawalpur → Lahore",
+    travel_date: "2026-09-15",
     timing_slot: "09:00",
     status: "open",
     available_seats: 28,
-    held_seats: 2,
-    booked_seats: 10,
-    reserved_seats: 2,
     total_seats: 42,
   },
   {
-    id: "schedule-002",
-    date: "2026-09-15",
+    schedule_instance_id: "schedule-002",
+    route_id: "route-bwp-lhr-001",
+    route_name: "Bahawalpur → Lahore",
+    travel_date: "2026-09-15",
     timing_slot: "15:00",
     status: "open",
     available_seats: 19,
-    held_seats: 3,
-    booked_seats: 17,
-    reserved_seats: 3,
     total_seats: 42,
   },
 ];
 
 export function mockGetSchedules(date: string): ScheduleResponse[] {
-  return MOCK_SCHEDULES.filter((schedule) => schedule.date === date);
+  return MOCK_SCHEDULES.filter(
+    (schedule) => schedule.travel_date === date,
+  );
 }
 
 export function mockGetScheduleSeats(
   scheduleId: string,
 ): ScheduleSeatsResponse {
-  if (scheduleId !== MOCK_SCHEDULE_SEATS.schedule_id) {
+  if (
+    scheduleId !== MOCK_SCHEDULE_SEATS.schedule_instance_id
+  ) {
     throw new Error("Schedule not found.");
   }
 
@@ -72,26 +74,11 @@ export function mockCreateBooking(
   return {
     booking_id: bookingId,
     booking_ref: bookingRef,
-    date: MOCK_SCHEDULE_SEATS.date,
-    timing_slot: MOCK_SCHEDULE_SEATS.timing_slot,
-    seat_ids: [],
-    seat_numbers: [],
+    status: "pending_payment",
+    booking_type: "visitor",
+    schedule_id: MOCK_SCHEDULE_SEATS.schedule_instance_id,
     passenger_count: request.passenger_count,
     total_price: request.passenger_count * 500,
-    booking_type: "visitor",
-    booking_status: "pending_payment",
-    payment_status: "unpaid",
-    hold_expires_at: new Date(
-      Date.now() + 10 * 60 * 1000,
-    ).toISOString(),
-    payment_methods: [
-      {
-        id: "mock-bank-transfer",
-        name: "Bank Transfer",
-        account_name: "TDCP Bahawalpur",
-        account_number: "PK00-MOCK-ACCOUNT",
-      },
-    ],
   };
 }
 
@@ -107,13 +94,22 @@ export function mockGetBookingStatus(
   return {
     booking_id: "mock-booking-status-001",
     booking_ref: "BWP-123456",
-    date: MOCK_SCHEDULE_SEATS.date,
+    travel_date: MOCK_SCHEDULE_SEATS.travel_date,
     timing_slot: MOCK_SCHEDULE_SEATS.timing_slot,
-    seat_numbers: ["L1", "L2"],
+    seats: [
+      {
+        seat_number: 1,
+        deck: "lower",
+      },
+      {
+        seat_number: 2,
+        deck: "lower",
+      },
+    ],
     passenger_count: 2,
     total_price: 1000,
     booking_status: "pending_payment",
     payment_status: "unpaid",
-    created_at: new Date().toISOString(),
+    status_message: "Payment is pending.",
   };
 }

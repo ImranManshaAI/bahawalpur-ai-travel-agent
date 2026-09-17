@@ -410,7 +410,7 @@ export default function HomePage() {
 
         {/* =======================================================
             HEADER
-        ======================================================== */}
+        ========================================================= */}
 
         <header className="absolute left-0 right-0 top-0 z-50">
           <div className="mx-auto flex h-[82px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-14">
@@ -461,14 +461,14 @@ export default function HomePage() {
               </Link>
 
               <Link
-                href="#about"
+                href="/about"
                 className="text-sm font-semibold text-white/75 transition-colors hover:text-white"
               >
                 About
               </Link>
 
               <Link
-                href="#why-us"
+                href="/why-choose-us"
                 className="text-sm font-semibold text-white/75 transition-colors hover:text-white"
               >
                 Why Choose Us
@@ -501,7 +501,7 @@ export default function HomePage() {
 
         {/* =======================================================
             HERO CONTENT
-        ======================================================== */}
+        ========================================================= */}
 
         <div className="relative z-30 mx-auto flex min-h-[680px] max-w-[1440px] -translate-y-8 items-center px-5 pb-20 pt-28 sm:min-h-[720px] sm:px-8 sm:pt-32 lg:min-h-[760px] lg:px-14">
           <div className="max-w-[680px]">
@@ -579,7 +579,7 @@ export default function HomePage() {
 
         {/* =======================================================
             SLIDER CONTROLS
-        ======================================================== */}
+        ========================================================= */}
 
         <button
           type="button"
@@ -1213,14 +1213,14 @@ export default function HomePage() {
                 </Link>
 
                 <Link
-                  href="#about"
+                  href="/about"
                   className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   About
                 </Link>
 
                 <Link
-                  href="#why-us"
+                  href="/why-choose-us"
                   className="font-semibold text-white/55 transition-colors hover:text-white"
                 >
                   Why Choose Us

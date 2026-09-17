@@ -78,10 +78,16 @@ export default function ScheduleSelector() {
   const router = useRouter();
 
   const [date, setDate] = useState("");
-  const [time, setTime] = useState("17:30");
+  const [time, setTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
   const [error, setError] = useState("");
+
+  const availableTimes = useMemo(() => {
+    return Array.from(
+      new Set(schedules.map((schedule) => schedule.timing_slot))
+    ).sort();
+  }, [schedules]);
 
   const selectedSchedule = useMemo(() => {
     if (!date || !time) return null;
@@ -94,6 +100,21 @@ export default function ScheduleSelector() {
       ) || null
     );
   }, [date, time, schedules]);
+
+  function formatTime(value: string) {
+    const [hours, minutes] = value.split(":").map(Number);
+
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return value;
+    }
+
+    const suffix = hours >= 12 ? "pm" : "am";
+    const displayHour = hours % 12 || 12;
+
+    return `${String(displayHour).padStart(2, "0")}:${String(
+      minutes
+    ).padStart(2, "0")} ${suffix}`;
+  }
 
   async function handleSearch() {
     setError("");
@@ -109,35 +130,52 @@ export default function ScheduleSelector() {
       const scheduleData = await getSchedules(date);
 
       if (!scheduleData || scheduleData.length === 0) {
+        setSchedules([]);
+        setTime("");
         setError("No schedules are available for this date.");
         return;
       }
 
       setSchedules(scheduleData);
 
-      const matchingSchedule = scheduleData.find(
-        (schedule) => schedule.timing_slot === time
-      );
+      const matchingSchedule = time
+        ? scheduleData.find(
+            (schedule) => schedule.timing_slot === time
+          )
+        : null;
 
-      if (!matchingSchedule) {
-        setError("No schedule is available for this time.");
-        return;
-      }
+      const scheduleToUse =
+        matchingSchedule ?? scheduleData[0];
+
+      setTime(scheduleToUse.timing_slot);
 
       router.push(
         `/booking?date=${encodeURIComponent(
           date
         )}&time=${encodeURIComponent(
-          time
+          scheduleToUse.timing_slot
         )}&schedule=${encodeURIComponent(
-          matchingSchedule.schedule_instance_id
+          scheduleToUse.schedule_instance_id
         )}`
       );
-    } catch {
+    } catch (requestError) {
+      console.error("Failed to load schedules:", requestError);
       setError("Unable to load schedules. Please try again.");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleDateChange(value: string) {
+    setDate(value);
+    setTime("");
+    setSchedules([]);
+    setError("");
+  }
+
+  function handleTimeChange(value: string) {
+    setTime(value);
+    setError("");
   }
 
   return (
@@ -370,7 +408,7 @@ export default function ScheduleSelector() {
                     type="date"
                     value={date}
                     onChange={(event) =>
-                      setDate(event.target.value)
+                      handleDateChange(event.target.value)
                     }
                     className="
                       min-w-0
@@ -437,8 +475,9 @@ export default function ScheduleSelector() {
                   <input
                     type="time"
                     value={time}
+                    list="available-departure-times"
                     onChange={(event) =>
-                      setTime(event.target.value)
+                      handleTimeChange(event.target.value)
                     }
                     className="
                       min-w-0
@@ -452,6 +491,17 @@ export default function ScheduleSelector() {
                       outline-none
                     "
                   />
+
+                  <datalist id="available-departure-times">
+                    {availableTimes.map((availableTime) => (
+                      <option
+                        key={availableTime}
+                        value={availableTime}
+                      >
+                        {formatTime(availableTime)}
+                      </option>
+                    ))}
+                  </datalist>
                 </div>
               </label>
 
@@ -528,6 +578,45 @@ export default function ScheduleSelector() {
               </button>
             </div>
 
+            {/* AVAILABLE TIMES */}
+            {availableTimes.length > 0 && !error && (
+              <div className="mt-4">
+                <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#8a9690]">
+                  Available departure times
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  {availableTimes.map((availableTime) => {
+                    const active = availableTime === time;
+
+                    return (
+                      <button
+                        key={availableTime}
+                        type="button"
+                        onClick={() => handleTimeChange(availableTime)}
+                        className={`
+                          rounded-full
+                          border
+                          px-3.5
+                          py-2
+                          text-xs
+                          font-extrabold
+                          transition-all
+                          ${
+                            active
+                              ? "border-[#007456] bg-[#007456] text-white"
+                              : "border-[#d7e5dc] bg-[#f5faf7] text-[#007456] hover:border-[#007456] hover:bg-[#e8f5ee]"
+                          }
+                        `}
+                      >
+                        {formatTime(availableTime)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* ERROR */}
             {error && (
               <div
@@ -574,7 +663,7 @@ export default function ScheduleSelector() {
                 <p className="text-xs font-semibold text-[#52625a]">
                   Schedule available for{" "}
                   <span className="font-extrabold text-[#007456]">
-                    {selectedSchedule.timing_slot}
+                    {formatTime(selectedSchedule.timing_slot)}
                   </span>
                 </p>
               </div>

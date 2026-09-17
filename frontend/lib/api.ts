@@ -1,16 +1,11 @@
-﻿import {
-  mockCreateBooking,
-  mockGetBookingStatus,
-  mockGetScheduleSeats,
-  mockGetSchedules,
-  mockHoldSeats,
-} from "@/mocks/api";
-import type {
+﻿import type {
   BookingStatusResponse,
   CreateBookingRequest,
   CreateBookingResponse,
   HoldRequest,
   HoldResponse,
+  ScheduleResponse,
+  ScheduleSeatsResponse,
 } from "@/lib/api-types";
 
 const API_BASE_URL =
@@ -95,49 +90,81 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 /**
- * Mock implementation of:
  * GET /schedules?date=YYYY-MM-DD
  */
-export async function getSchedules(date: string) {
-  return mockGetSchedules(date);
+export async function getSchedules(
+  date: string,
+): Promise<ScheduleResponse[]> {
+  const params = new URLSearchParams({
+    date,
+  });
+
+  return apiFetch<ScheduleResponse[]>(
+    `/schedules?${params.toString()}`,
+  );
 }
 
 /**
- * Mock implementation of:
  * GET /schedules/{schedule_id}/seats
  */
-export async function getScheduleSeats(scheduleId: string) {
-  return mockGetScheduleSeats(scheduleId);
+export async function getScheduleSeats(
+  scheduleId: string,
+): Promise<ScheduleSeatsResponse> {
+  return apiFetch<ScheduleSeatsResponse>(
+    `/schedules/${encodeURIComponent(scheduleId)}/seats`,
+  );
 }
 
 /**
- * Mock implementation of:
  * POST /bookings/hold
  */
 export async function holdSeats(
   request: HoldRequest,
 ): Promise<HoldResponse> {
-  return mockHoldSeats(request);
+  return apiFetch<HoldResponse>("/bookings/hold", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 /**
- * Mock implementation of:
  * POST /bookings
  */
 export async function createBooking(
   request: CreateBookingRequest,
 ): Promise<CreateBookingResponse> {
-  return mockCreateBooking(request);
+  return apiFetch<CreateBookingResponse>("/bookings", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 /**
- * Mock implementation of:
  * GET /bookings/status?ref|phone|email
+ *
+ * The booking status endpoint accepts one lookup value.
+ * The value is sent as the `ref` query parameter.
  */
 export async function getBookingStatus(
   query: string,
 ): Promise<BookingStatusResponse> {
-  return mockGetBookingStatus(query);
+  const normalizedQuery = query.trim();
+
+  if (!normalizedQuery) {
+    throw new ApiRequestError(
+      "Booking reference, phone, or email is required.",
+      400,
+      "INVALID_BOOKING_QUERY",
+    );
+  }
+
+  const params = new URLSearchParams({
+    ref: normalizedQuery,
+  });
+
+  return apiFetch<BookingStatusResponse>(
+    `/bookings/status?${params.toString()}`,
+  );
 }
 
 /**

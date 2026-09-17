@@ -35,14 +35,23 @@ export default function PassengerDetailsForm({
       return;
     }
 
+    const trimmedName = visitorName.trim();
+    const trimmedPhone = phone.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName || !trimmedPhone) {
+      setErrorMessage("Please enter your name and phone number.");
+      return;
+    }
+
     setErrorMessage(null);
     setIsSubmitting(true);
 
     const payload: CreateBookingRequest = {
       hold_token: holdToken,
-      visitor_name: visitorName.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
+      visitor_name: trimmedName,
+      visitor_phone: trimmedPhone,
+      visitor_email: trimmedEmail || null,
       passenger_count: passengerCount,
     };
 
@@ -59,8 +68,6 @@ export default function PassengerDetailsForm({
   }
 
   if (booking) {
-    const primaryPaymentMethod = booking.payment_methods[0];
-
     return (
       <div className="space-y-6">
         <section
@@ -94,6 +101,7 @@ export default function PassengerDetailsForm({
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Booking reference
                 </dt>
+
                 <dd className="mt-1 text-sm font-semibold text-slate-900">
                   {booking.booking_ref}
                 </dd>
@@ -101,19 +109,21 @@ export default function PassengerDetailsForm({
 
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Travel date
+                  Booking ID
                 </dt>
-                <dd className="mt-1 text-sm text-slate-900">
-                  {booking.date}
+
+                <dd className="mt-1 break-all text-sm text-slate-900">
+                  {booking.booking_id}
                 </dd>
               </div>
 
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Departure
+                  Schedule
                 </dt>
-                <dd className="mt-1 text-sm text-slate-900">
-                  {booking.timing_slot}
+
+                <dd className="mt-1 break-all text-sm text-slate-900">
+                  {booking.schedule_id}
                 </dd>
               </div>
 
@@ -121,6 +131,7 @@ export default function PassengerDetailsForm({
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Passengers
                 </dt>
+
                 <dd className="mt-1 text-sm text-slate-900">
                   {booking.passenger_count}
                 </dd>
@@ -130,8 +141,9 @@ export default function PassengerDetailsForm({
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Total price
                 </dt>
+
                 <dd className="mt-1 text-sm font-semibold text-slate-900">
-                  {booking.total_price}
+                  PKR {booking.total_price.toLocaleString("en-PK")}
                 </dd>
               </div>
 
@@ -139,58 +151,29 @@ export default function PassengerDetailsForm({
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Booking status
                 </dt>
-                <dd className="mt-1 text-sm text-slate-900">
-                  {booking.booking_status}
+
+                <dd className="mt-1 text-sm capitalize text-slate-900">
+                  {booking.status.replace(/_/g, " ")}
                 </dd>
               </div>
 
               <div>
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Payment status
+                  Booking type
                 </dt>
-                <dd className="mt-1 text-sm text-slate-900">
-                  {booking.payment_status}
+
+                <dd className="mt-1 text-sm capitalize text-slate-900">
+                  {booking.booking_type.replace(/_/g, " ")}
                 </dd>
               </div>
             </dl>
           </div>
-
-          {primaryPaymentMethod && (
-            <div className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-slate-950">
-                Payment method
-              </h3>
-
-              <dl className="mt-3 space-y-2 text-sm">
-                <div>
-                  <dt className="text-slate-500">Method</dt>
-                  <dd className="font-medium text-slate-900">
-                    {primaryPaymentMethod.name}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-slate-500">Account name</dt>
-                  <dd className="font-medium text-slate-900">
-                    {primaryPaymentMethod.account_name}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-slate-500">Account number</dt>
-                  <dd className="font-medium text-slate-900">
-                    {primaryPaymentMethod.account_number}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          )}
         </section>
 
         <PaymentProofForm
           bookingId={booking.booking_id}
           totalPrice={booking.total_price}
-          paymentMethods={booking.payment_methods}
+          paymentMethods={[]}
         />
       </div>
     );
@@ -274,7 +257,7 @@ export default function PassengerDetailsForm({
 
           <input
             id="phone"
-            name="phone"
+            name="visitor_phone"
             type="tel"
             required
             autoComplete="tel"
@@ -291,13 +274,15 @@ export default function PassengerDetailsForm({
             className="block text-sm font-semibold text-slate-900"
           >
             Email
+            <span className="ml-1 font-normal text-slate-400">
+              (optional)
+            </span>
           </label>
 
           <input
             id="email"
-            name="email"
+            name="visitor_email"
             type="email"
-            required
             autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}

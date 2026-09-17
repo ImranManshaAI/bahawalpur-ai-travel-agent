@@ -75,9 +75,9 @@ function Deck({
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {seats.map((seat) => (
           <SeatButton
-            key={seat.id}
+            key={seat.seat_id}
             seat={seat}
-            isSelected={selectedSeatIds.includes(seat.id)}
+            isSelected={selectedSeatIds.includes(seat.seat_id)}
             onSelect={onSelect}
           />
         ))}
@@ -137,9 +137,9 @@ export default function SeatMap({
     setErrorMessage(null);
 
     setSelectedSeatIds((current) =>
-      current.includes(seat.id)
-        ? current.filter((id) => id !== seat.id)
-        : [...current, seat.id],
+      current.includes(seat.seat_id)
+        ? current.filter((id) => id !== seat.seat_id)
+        : [...current, seat.seat_id],
     );
   }
 

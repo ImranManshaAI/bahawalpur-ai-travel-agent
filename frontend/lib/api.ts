@@ -4,6 +4,7 @@
   CreateBookingResponse,
   HoldRequest,
   HoldResponse,
+  PaymentProofResponse,
   ScheduleResponse,
   ScheduleSeatsResponse,
 } from "@/lib/api-types";
@@ -217,6 +218,67 @@ export async function getBookingStatus(
 }
 
 /* =========================
+   Payment Proof
+========================= */
+
+/**
+ * POST /bookings/{booking_id}/payment-proof
+ *
+ * Backend expects multipart/form-data:
+ * - file: required
+ * - payment_method_id: optional
+ * - transaction_reference: optional
+ * - amount_claimed: optional
+ */
+export async function uploadPaymentProof(
+  bookingId: string,
+  file: File,
+  paymentMethodId?: string,
+  transactionReference?: string,
+  amountClaimed?: number,
+): Promise<PaymentProofResponse> {
+  if (!bookingId) {
+    throw new ApiRequestError(
+      "Booking ID is required.",
+      400,
+      "INVALID_BOOKING_ID",
+    );
+  }
+
+  if (!file) {
+    throw new ApiRequestError(
+      "Payment proof file is required.",
+      400,
+      "INVALID_PAYMENT_PROOF_FILE",
+    );
+  }
+
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  if (paymentMethodId) {
+    formData.append("payment_method_id", paymentMethodId);
+  }
+
+  if (transactionReference?.trim()) {
+    formData.append(
+      "transaction_reference",
+      transactionReference.trim(),
+    );
+  }
+
+  if (amountClaimed !== undefined) {
+    formData.append("amount_claimed", String(amountClaimed));
+  }
+
+  return apiUpload<PaymentProofResponse>(
+    `/bookings/${encodeURIComponent(bookingId)}/payment-proof`,
+    formData,
+  );
+}
+
+/* =========================
    Generic API Request
 ========================= */
 
@@ -245,6 +307,10 @@ export async function apiFetch<T>(
 
 /**
  * Multipart upload helper.
+ *
+ * Important:
+ * Do not set Content-Type manually here.
+ * The browser automatically adds the multipart boundary.
  */
 export async function apiUpload<T>(
   path: string,

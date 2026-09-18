@@ -8,6 +8,7 @@ import PassengerDetailsForm from "@/components/PassengerDetailsForm";
 interface SeatMapProps {
   scheduleId: string;
   seats: SeatResponse[];
+  onStepChange: (step: number) => void;
 }
 
 function formatRemainingTime(seconds: number): string {
@@ -89,6 +90,7 @@ function Deck({
 export default function SeatMap({
   scheduleId,
   seats,
+  onStepChange,
 }: SeatMapProps) {
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
   const [hold, setHold] = useState<HoldResponse | null>(null);
@@ -106,6 +108,14 @@ export default function SeatMap({
     [seats],
   );
 
+  /*
+   * Seat hold countdown.
+   *
+   * When the hold expires:
+   * - clear the active hold
+   * - clear selected seats
+   * - return progress to Step 02
+   */
   useEffect(() => {
     if (!hold) {
       return;
@@ -115,8 +125,12 @@ export default function SeatMap({
       setRemainingSeconds((current) => {
         if (current <= 1) {
           window.clearInterval(intervalId);
+
           setHold(null);
           setSelectedSeatIds([]);
+
+          onStepChange(2);
+
           return 0;
         }
 
@@ -127,7 +141,7 @@ export default function SeatMap({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [hold]);
+  }, [hold, onStepChange]);
 
   function handleSeatSelect(seat: SeatResponse) {
     if (hold || seat.status !== "available") {
@@ -159,7 +173,15 @@ export default function SeatMap({
 
       setHold(response);
       setRemainingSeconds(response.remaining_seconds);
-    } catch {
+
+      /*
+       * Seats successfully held.
+       * Move progress to Passenger Details.
+       */
+      onStepChange(3);
+    } catch (error) {
+      console.error("Failed to hold seats:", error);
+
       setErrorMessage(
         "We couldn't hold the selected seats. Please refresh the seat map and try again.",
       );
@@ -170,6 +192,7 @@ export default function SeatMap({
 
   return (
     <div className="space-y-6">
+      {/* TITLE */}
       <div>
         <h2
           id="seat-selection-heading"
@@ -183,6 +206,7 @@ export default function SeatMap({
         </p>
       </div>
 
+      {/* HOLD TIMER */}
       {hold && remainingSeconds > 0 && (
         <div
           className="rounded-xl border border-slate-300 bg-white p-5"
@@ -203,6 +227,7 @@ export default function SeatMap({
         </div>
       )}
 
+      {/* ERROR */}
       {errorMessage && (
         <div
           className="rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-800"
@@ -212,6 +237,7 @@ export default function SeatMap({
         </div>
       )}
 
+      {/* SEAT DECKS */}
       <div className="space-y-5">
         <Deck
           title="Upper"
@@ -228,6 +254,7 @@ export default function SeatMap({
         />
       </div>
 
+      {/* SELECTION ACTION */}
       <div className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-950">
@@ -245,7 +272,9 @@ export default function SeatMap({
           type="button"
           onClick={() => void handleHoldSeats()}
           disabled={
-            selectedSeatIds.length === 0 || isHolding || Boolean(hold)
+            selectedSeatIds.length === 0 ||
+            isHolding ||
+            Boolean(hold)
           }
           className="min-h-11 rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
@@ -257,6 +286,7 @@ export default function SeatMap({
         </button>
       </div>
 
+      {/* STEP 03 — PASSENGER DETAILS */}
       {hold && remainingSeconds > 0 && (
         <PassengerDetailsForm
           holdToken={hold.token}

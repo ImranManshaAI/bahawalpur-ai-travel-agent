@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  "http://127.0.0.1:8001";
 
 type DashboardSection =
   | "overview"
@@ -49,12 +50,15 @@ type Booking = {
 };
 
 type PaymentProof = {
-  id: string;
+  id?: string;
+  payment_proof_id?: string;
   booking_id: string;
-  payment_method_id: string;
-  status: string;
+  payment_method_id?: string | null;
+  status?: string | null;
   review_notes?: string | null;
-  created_at: string;
+  created_at?: string | null;
+  transaction_reference?: string | null;
+  amount_claimed?: number | null;
 };
 
 type ApiEnvelope<T> = {
@@ -64,6 +68,11 @@ type ApiEnvelope<T> = {
     message: string;
     details?: Record<string, unknown> | null;
   } | null;
+  detail?: unknown;
+};
+
+type AdminFetchOptions = {
+  allowEmpty?: boolean;
 };
 
 export default function AdminDashboardPage() {
@@ -78,17 +87,20 @@ export default function AdminDashboardPage() {
   const [scheduleDate, setScheduleDate] = useState(
     new Date().toISOString().slice(0, 10),
   );
-  const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [loadingSchedules, setLoadingSchedules] =
+    useState(false);
   const [scheduleError, setScheduleError] = useState("");
 
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loadingBookings, setLoadingBookings] = useState(false);
+  const [loadingBookings, setLoadingBookings] =
+    useState(false);
   const [bookingError, setBookingError] = useState("");
 
   const [paymentProofs, setPaymentProofs] = useState<
     PaymentProof[]
   >([]);
-  const [loadingPayments, setLoadingPayments] = useState(false);
+  const [loadingPayments, setLoadingPayments] =
+    useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentSuccess, setPaymentSuccess] = useState("");
   const [processingPaymentId, setProcessingPaymentId] =
@@ -100,6 +112,7 @@ export default function AdminDashboardPage() {
     new Date().toISOString().slice(0, 10),
   );
   const [timingSlot, setTimingSlot] = useState("");
+
   const [creatingSchedule, setCreatingSchedule] =
     useState(false);
   const [createError, setCreateError] = useState("");
@@ -119,9 +132,7 @@ export default function AdminDashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    if (checkingAuth) {
-      return;
-    }
+    if (checkingAuth) return;
 
     if (section === "schedules") {
       void loadSchedules(scheduleDate);
@@ -143,6 +154,7 @@ export default function AdminDashboardPage() {
   async function adminFetch<T>(
     path: string,
     options: RequestInit = {},
+    fetchOptions: AdminFetchOptions = {},
   ): Promise<T> {
     const token = localStorage.getItem(
       "admin_access_token",
@@ -165,12 +177,39 @@ export default function AdminDashboardPage() {
       },
     );
 
-    let body: ApiEnvelope<T> | null = null;
+    const raw = await response.text();
+
+    if (!raw.trim()) {
+      if (
+        response.ok &&
+        fetchOptions.allowEmpty
+      ) {
+        return undefined as T;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `Request failed with status ${response.status}.`,
+        );
+      }
+
+      throw new Error(
+        "The server returned no response data.",
+      );
+    }
+
+    let body: ApiEnvelope<T>;
 
     try {
-      body =
-        (await response.json()) as ApiEnvelope<T>;
+      body = JSON.parse(raw) as ApiEnvelope<T>;
     } catch {
+      if (!response.ok) {
+        throw new Error(
+          raw ||
+            `Request failed with status ${response.status}.`,
+        );
+      }
+
       throw new Error(
         "The server returned an invalid response.",
       );
@@ -178,8 +217,10 @@ export default function AdminDashboardPage() {
 
     if (!response.ok) {
       throw new Error(
-        body?.error?.message ??
-          `Request failed with status ${response.status}.`,
+        getApiErrorMessage(
+          body,
+          response.status,
+        ),
       );
     }
 
@@ -191,6 +232,10 @@ export default function AdminDashboardPage() {
       body?.data === null ||
       body?.data === undefined
     ) {
+      if (fetchOptions.allowEmpty) {
+        return undefined as T;
+      }
+
       throw new Error(
         "The server returned no data.",
       );
@@ -211,6 +256,7 @@ export default function AdminDashboardPage() {
       setSchedules(data);
     } catch (error) {
       setSchedules([]);
+
       setScheduleError(
         error instanceof Error
           ? error.message
@@ -233,6 +279,7 @@ export default function AdminDashboardPage() {
       setBookings(data);
     } catch (error) {
       setBookings([]);
+
       setBookingError(
         error instanceof Error
           ? error.message
@@ -248,13 +295,15 @@ export default function AdminDashboardPage() {
     setPaymentError("");
 
     try {
-      const data = await adminFetch<PaymentProof[]>(
-        "/admin/payment-proofs",
-      );
+      const data =
+        await adminFetch<PaymentProof[]>(
+          "/admin/payment-proofs",
+        );
 
       setPaymentProofs(data);
     } catch (error) {
       setPaymentProofs([]);
+
       setPaymentError(
         error instanceof Error
           ? error.message
@@ -266,15 +315,11 @@ export default function AdminDashboardPage() {
   }
 
   async function loadOverviewData() {
-    try {
-      await Promise.all([
-        loadSchedules(scheduleDate),
-        loadBookings(),
-        loadPaymentProofs(),
-      ]);
-    } catch {
-      // Individual loaders handle their own errors.
-    }
+    await Promise.all([
+      loadSchedules(scheduleDate),
+      loadBookings(),
+      loadPaymentProofs(),
+    ]);
   }
 
   async function handleCreateSchedule(
@@ -284,6 +329,38 @@ export default function AdminDashboardPage() {
 
     setCreateError("");
     setCreateSuccess("");
+
+    const cleanBusId = busId.trim();
+    const cleanRouteId = routeId.trim();
+
+    if (!isValidUUID(cleanBusId)) {
+      setCreateError(
+        "Invalid Bus UUID. Please enter the complete Bus UUID, not a numeric ID such as 2.",
+      );
+      return;
+    }
+
+    if (!isValidUUID(cleanRouteId)) {
+      setCreateError(
+        "Invalid Route UUID. Please enter the complete Route UUID, not a numeric ID such as 2.",
+      );
+      return;
+    }
+
+    if (!travelDate) {
+      setCreateError(
+        "Please select a travel date.",
+      );
+      return;
+    }
+
+    if (!timingSlot) {
+      setCreateError(
+        "Please select a departure time.",
+      );
+      return;
+    }
+
     setCreatingSchedule(true);
 
     try {
@@ -293,8 +370,8 @@ export default function AdminDashboardPage() {
           {
             method: "POST",
             body: JSON.stringify({
-              bus_id: busId.trim(),
-              route_id: routeId.trim(),
+              bus_id: cleanBusId,
+              route_id: cleanRouteId,
               travel_date: travelDate,
               timing_slot: timingSlot,
             }),
@@ -336,6 +413,7 @@ export default function AdminDashboardPage() {
           method: "PATCH",
           body: JSON.stringify({ status }),
         },
+        { allowEmpty: true },
       );
 
       await loadSchedules(scheduleDate);
@@ -348,10 +426,66 @@ export default function AdminDashboardPage() {
     }
   }
 
+  function getProofId(
+    proof: PaymentProof,
+  ): string {
+    return (
+      proof.id ??
+      proof.payment_proof_id ??
+      ""
+    );
+  }
+
+  function getPaymentStatus(
+    proof: PaymentProof,
+  ): string {
+    return (
+      proof.status?.trim().toLowerCase() ??
+      "unknown"
+    );
+  }
+
+  function isPaymentPending(
+    proof: PaymentProof,
+  ): boolean {
+    const status = getPaymentStatus(proof);
+
+    const finalStatuses = [
+      "confirmed",
+      "verified",
+      "approved",
+      "paid",
+      "rejected",
+      "cancelled",
+      "canceled",
+      "failed",
+    ];
+
+    return !finalStatuses.includes(status);
+  }
+
   async function handlePaymentAction(
-    proofId: string,
+    proof: PaymentProof,
     action: "confirm" | "reject",
   ) {
+    const proofId = getProofId(proof);
+
+    if (!proofId) {
+      setPaymentError(
+        "Payment proof ID is missing. The proof cannot be verified.",
+      );
+      return;
+    }
+
+    const message =
+      action === "confirm"
+        ? "Are you sure you want to verify this payment?"
+        : "Are you sure you want to reject this payment?";
+
+    if (!window.confirm(message)) {
+      return;
+    }
+
     setPaymentError("");
     setPaymentSuccess("");
     setProcessingPaymentId(proofId);
@@ -362,15 +496,19 @@ export default function AdminDashboardPage() {
         {
           method: "POST",
         },
+        {
+          allowEmpty: true,
+        },
       );
 
       setPaymentSuccess(
         action === "confirm"
-          ? "Payment proof confirmed successfully."
+          ? "Payment verified successfully. The booking payment status has been updated."
           : "Payment proof rejected successfully.",
       );
 
       await loadPaymentProofs();
+      await loadBookings();
     } catch (error) {
       setPaymentError(
         error instanceof Error
@@ -406,31 +544,44 @@ export default function AdminDashboardPage() {
     id: DashboardSection;
     label: string;
   }[] = [
-    { id: "overview", label: "Overview" },
-    { id: "schedules", label: "Schedules" },
-    { id: "bookings", label: "Bookings" },
-    { id: "payments", label: "Payment Proofs" },
+    {
+      id: "overview",
+      label: "Overview",
+    },
+    {
+      id: "schedules",
+      label: "Schedules",
+    },
+    {
+      id: "bookings",
+      label: "Bookings",
+    },
+    {
+      id: "payments",
+      label: "Payment Proofs",
+    },
   ];
 
   const openSchedules = schedules.filter(
-    (schedule) => schedule.status === "open",
+    (schedule) =>
+      schedule.status?.toLowerCase() === "open",
   );
 
   const totalOpenSeats = schedules.reduce(
     (total, schedule) =>
-      total + schedule.available_seats,
+      total + Number(schedule.available_seats || 0),
     0,
   );
 
-  const pendingPayments = paymentProofs.filter(
-    (proof) =>
-      proof.status === "pending_verification",
-  );
+  const pendingPayments =
+    paymentProofs.filter(isPaymentPending);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="flex min-h-screen">
-        {/* Sidebar */}
+
+        {/* SIDEBAR */}
+
         <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-slate-900 p-5 md:block">
           <div className="mb-8">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-300">
@@ -456,7 +607,16 @@ export default function AdminDashboardPage() {
                     : "text-slate-300 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                {item.label}
+                <span className="flex items-center justify-between gap-3">
+                  <span>{item.label}</span>
+
+                  {item.id === "payments" &&
+                    pendingPayments.length > 0 && (
+                      <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">
+                        {pendingPayments.length}
+                      </span>
+                    )}
+                </span>
               </button>
             ))}
           </nav>
@@ -470,8 +630,12 @@ export default function AdminDashboardPage() {
           </button>
         </aside>
 
-        {/* Main content */}
+        {/* MAIN */}
+
         <section className="flex-1">
+
+          {/* HEADER */}
+
           <header className="border-b border-white/10 bg-slate-950/90 px-6 py-5 backdrop-blur">
             <div className="mx-auto flex max-w-7xl items-center justify-between">
               <div>
@@ -500,7 +664,9 @@ export default function AdminDashboardPage() {
           </header>
 
           <div className="mx-auto max-w-7xl p-6">
-            {/* Overview */}
+
+            {/* OVERVIEW */}
+
             {section === "overview" && (
               <div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -530,6 +696,9 @@ export default function AdminDashboardPage() {
                     value={String(
                       pendingPayments.length,
                     )}
+                    highlight={
+                      pendingPayments.length > 0
+                    }
                   />
                 </div>
 
@@ -549,24 +718,61 @@ export default function AdminDashboardPage() {
                   />
                 </div>
 
+                {pendingPayments.length > 0 && (
+                  <div className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-black uppercase tracking-[0.15em] text-amber-300">
+                          Action Required
+                        </p>
+
+                        <h3 className="mt-1 text-xl font-bold text-white">
+                          {pendingPayments.length} payment{" "}
+                          {pendingPayments.length === 1
+                            ? "proof needs"
+                            : "proofs need"}{" "}
+                          verification
+                        </h3>
+
+                        <p className="mt-1 text-sm text-amber-100/70">
+                          Review the submitted payment
+                          proof before confirming the
+                          customer booking.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSection("payments")
+                        }
+                        className="rounded-xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200"
+                      >
+                        Review Payments
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-6">
                   <h3 className="text-lg font-semibold">
                     Admin Dashboard
                   </h3>
 
                   <p className="mt-2 text-sm leading-6 text-slate-400">
-                    Use the sections to manage
-                    schedules, review bookings and
-                    process payment proofs.
+                    Manage schedules, review
+                    customer bookings and verify
+                    submitted payment proofs.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Schedules */}
+            {/* SCHEDULES */}
+
             {section === "schedules" && (
               <div className="space-y-6">
-                {/* Create schedule */}
+
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
                   <div className="mb-6">
                     <h3 className="text-xl font-semibold">
@@ -586,49 +792,77 @@ export default function AdminDashboardPage() {
                     }
                     className="grid gap-4 md:grid-cols-2"
                   >
+                    {/* BUS UUID */}
+
                     <div>
                       <label
                         htmlFor="bus-id"
                         className="mb-2 block text-sm font-medium text-slate-200"
                       >
-                        Bus ID
+                        Bus UUID
                       </label>
 
                       <input
                         id="bus-id"
+                        type="text"
                         required
                         value={busId}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setBusId(
                             event.target.value,
-                          )
-                        }
-                        placeholder="Bus UUID"
-                        className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400"
+                          );
+                          setCreateError("");
+                          setCreateSuccess("");
+                        }}
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400"
                       />
+
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        Enter the complete Bus UUID.
+                        Numeric IDs such as 2 are not
+                        accepted by the API.
+                      </p>
                     </div>
+
+                    {/* ROUTE UUID */}
 
                     <div>
                       <label
                         htmlFor="route-id"
                         className="mb-2 block text-sm font-medium text-slate-200"
                       >
-                        Route ID
+                        Route UUID
                       </label>
 
                       <input
                         id="route-id"
+                        type="text"
                         required
                         value={routeId}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setRouteId(
                             event.target.value,
-                          )
-                        }
-                        placeholder="Route UUID"
-                        className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400"
+                          );
+                          setCreateError("");
+                          setCreateSuccess("");
+                        }}
+                        placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400"
                       />
+
+                      <p className="mt-2 text-xs leading-5 text-slate-500">
+                        Enter the complete Route UUID.
+                        Numeric IDs such as 2 are not
+                        accepted by the API.
+                      </p>
                     </div>
+
+                    {/* TRAVEL DATE */}
 
                     <div>
                       <label
@@ -643,14 +877,18 @@ export default function AdminDashboardPage() {
                         type="date"
                         required
                         value={travelDate}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setTravelDate(
                             event.target.value,
-                          )
-                        }
+                          );
+                          setCreateError("");
+                          setCreateSuccess("");
+                        }}
                         className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
                       />
                     </div>
+
+                    {/* DEPARTURE TIME */}
 
                     <div>
                       <label
@@ -665,24 +903,40 @@ export default function AdminDashboardPage() {
                         type="time"
                         required
                         value={timingSlot}
-                        onChange={(event) =>
+                        onChange={(event) => {
                           setTimingSlot(
                             event.target.value,
-                          )
-                        }
+                          );
+                          setCreateError("");
+                          setCreateSuccess("");
+                        }}
                         className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400"
                       />
                     </div>
 
+                    {/* CREATE RESULT */}
+
                     <div className="md:col-span-2">
                       {createError && (
-                        <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
-                          {createError}
+                        <div
+                          className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm leading-6 text-red-200"
+                          role="alert"
+                        >
+                          <p className="font-semibold">
+                            Schedule could not be created
+                          </p>
+
+                          <p className="mt-1">
+                            {createError}
+                          </p>
                         </div>
                       )}
 
                       {createSuccess && (
-                        <div className="mb-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                        <div
+                          className="mb-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm leading-6 text-emerald-200"
+                          role="status"
+                        >
                           {createSuccess}
                         </div>
                       )}
@@ -702,7 +956,8 @@ export default function AdminDashboardPage() {
                   </form>
                 </div>
 
-                {/* Schedule list */}
+                {/* SCHEDULE MANAGEMENT */}
+
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
                   <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
@@ -739,7 +994,10 @@ export default function AdminDashboardPage() {
                   </div>
 
                   {scheduleError && (
-                    <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+                    <div
+                      className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200"
+                      role="alert"
+                    >
                       {scheduleError}
                     </div>
                   )}
@@ -800,22 +1058,15 @@ export default function AdminDashboardPage() {
                                     }
                                   </span>
                                 </div>
-
-                                <p className="mt-2 break-all text-xs text-slate-600">
-                                  ID:{" "}
-                                  {
-                                    schedule.schedule_instance_id
-                                  }
-                                </p>
                               </div>
 
                               <div className="flex gap-2">
-                                {schedule.status ===
+                                {schedule.status?.toLowerCase() ===
                                 "open" ? (
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      handleScheduleStatus(
+                                      void handleScheduleStatus(
                                         schedule.schedule_instance_id,
                                         "closed",
                                       )
@@ -828,7 +1079,7 @@ export default function AdminDashboardPage() {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      handleScheduleStatus(
+                                      void handleScheduleStatus(
                                         schedule.schedule_instance_id,
                                         "open",
                                       )
@@ -849,7 +1100,8 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* Bookings */}
+            {/* BOOKINGS */}
+
             {section === "bookings" && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -971,27 +1223,37 @@ export default function AdminDashboardPage() {
               </div>
             )}
 
-            {/* Payment Proofs */}
+            {/* PAYMENT PROOFS */}
+
             {section === "payments" && (
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                   <div>
-                    <h3 className="text-xl font-semibold">
-                      Payment Proofs
-                    </h3>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <h3 className="text-xl font-semibold">
+                        Payment Proofs
+                      </h3>
+
+                      {pendingPayments.length > 0 && (
+                        <span className="rounded-full bg-red-500 px-3 py-1 text-xs font-black text-white">
+                          {pendingPayments.length} Pending
+                        </span>
+                      )}
+                    </div>
 
                     <p className="mt-1 text-sm text-slate-400">
                       Review submitted payment proofs
-                      and update their verification
-                      status.
+                      and verify or reject them.
                     </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() =>
-                      void loadPaymentProofs()
-                    }
+                    onClick={() => {
+                      setPaymentSuccess("");
+                      void loadPaymentProofs();
+                    }}
                     disabled={loadingPayments}
                     className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:bg-white/5 disabled:opacity-50"
                   >
@@ -1002,13 +1264,25 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {paymentError && (
-                  <div className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200">
-                    {paymentError}
+                  <div
+                    className="mb-4 rounded-xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200"
+                    role="alert"
+                  >
+                    <p className="font-semibold">
+                      Payment proof error
+                    </p>
+
+                    <p className="mt-1">
+                      {paymentError}
+                    </p>
                   </div>
                 )}
 
                 {paymentSuccess && (
-                  <div className="mb-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
+                  <div
+                    className="mb-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200"
+                    role="status"
+                  >
                     {paymentSuccess}
                   </div>
                 )}
@@ -1018,120 +1292,240 @@ export default function AdminDashboardPage() {
                 ) : paymentProofs.length === 0 ? (
                   <EmptyState text="No payment proofs found." />
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
+
                     {paymentProofs.map(
                       (proof) => {
-                        const isPending =
-                          proof.status ===
-                          "pending_verification";
+                        const proofId =
+                          getProofId(proof);
+
+                        const pending =
+                          isPaymentPending(
+                            proof,
+                          );
+
+                        const status =
+                          getPaymentStatus(
+                            proof,
+                          );
 
                         const processing =
                           processingPaymentId ===
-                          proof.id;
+                          proofId;
 
                         return (
                           <div
-                            key={proof.id}
-                            className="rounded-xl border border-white/10 bg-slate-900/70 p-5"
+                            key={
+                              proofId ||
+                              proof.booking_id
+                            }
+                            className={`rounded-2xl border p-5 ${
+                              pending
+                                ? "border-amber-400/30 bg-amber-400/[0.06]"
+                                : "border-white/10 bg-slate-900/70"
+                            }`}
                           >
-                            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                              <div>
+                            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+
+                              {/* PAYMENT INFORMATION */}
+
+                              <div className="min-w-0 flex-1">
+
                                 <div className="flex flex-wrap items-center gap-3">
-                                  <h4 className="font-semibold">
+                                  <h4 className="text-lg font-bold">
                                     Payment Proof
                                   </h4>
 
                                   <StatusBadge
                                     status={
-                                      proof.status
+                                      status
                                     }
                                   />
+
+                                  {pending && (
+                                    <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-bold text-amber-300">
+                                      Action Required
+                                    </span>
+                                  )}
                                 </div>
 
-                                <div className="mt-3 space-y-1 text-sm text-slate-400">
-                                  <p className="break-all">
-                                    Proof ID:{" "}
-                                    {proof.id}
-                                  </p>
+                                <div className="mt-4 grid gap-3 sm:grid-cols-2">
 
-                                  <p className="break-all">
-                                    Booking ID:{" "}
-                                    {
+                                  <InfoItem
+                                    label="Booking ID"
+                                    value={
                                       proof.booking_id
                                     }
-                                  </p>
+                                  />
 
-                                  <p>
-                                    Payment Method ID:{" "}
-                                    {
-                                      proof.payment_method_id
+                                  <InfoItem
+                                    label="Proof ID"
+                                    value={
+                                      proofId ||
+                                      "Not available"
                                     }
-                                  </p>
+                                  />
 
-                                  <p>
-                                    Submitted:{" "}
-                                    {formatDateTime(
-                                      proof.created_at,
-                                    )}
-                                  </p>
+                                  <InfoItem
+                                    label="Payment Method ID"
+                                    value={
+                                      proof.payment_method_id ??
+                                      "Not available"
+                                    }
+                                  />
 
-                                  {proof.review_notes && (
-                                    <p>
-                                      Review Notes:{" "}
+                                  <InfoItem
+                                    label="Submitted"
+                                    value={
+                                      proof.created_at
+                                        ? formatDateTime(
+                                            proof.created_at,
+                                          )
+                                        : "Not available"
+                                    }
+                                  />
+
+                                  <InfoItem
+                                    label="Transaction Reference"
+                                    value={
+                                      proof.transaction_reference ??
+                                      "Not available"
+                                    }
+                                  />
+
+                                  <InfoItem
+                                    label="Amount Claimed"
+                                    value={
+                                      proof.amount_claimed !==
+                                        null &&
+                                      proof.amount_claimed !==
+                                        undefined
+                                        ? `PKR ${Number(
+                                            proof.amount_claimed,
+                                          ).toLocaleString()}`
+                                        : "Not available"
+                                    }
+                                  />
+
+                                </div>
+
+                                {proof.review_notes && (
+                                  <div className="mt-4 rounded-xl border border-white/10 bg-black/10 p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                      Review Notes
+                                    </p>
+
+                                    <p className="mt-1 text-sm text-slate-300">
                                       {
                                         proof.review_notes
                                       }
                                     </p>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </div>
 
-                              {isPending && (
-                                <div className="flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    disabled={
-                                      processing
-                                    }
-                                    onClick={() =>
-                                      void handlePaymentAction(
-                                        proof.id,
-                                        "confirm",
-                                      )
-                                    }
-                                    className="rounded-lg bg-emerald-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    {processing
-                                      ? "Processing..."
-                                      : "Confirm"}
-                                  </button>
+                              {/* VERIFICATION PANEL */}
 
-                                  <button
-                                    type="button"
-                                    disabled={
-                                      processing
-                                    }
-                                    onClick={() =>
-                                      void handlePaymentAction(
-                                        proof.id,
-                                        "reject",
-                                      )
-                                    }
-                                    className="rounded-lg border border-red-400/20 px-4 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    Reject
-                                  </button>
+                              {pending ? (
+                                <div className="w-full shrink-0 rounded-2xl border border-amber-400/20 bg-slate-950/80 p-5 lg:w-72">
+
+                                  <div className="flex items-center gap-2">
+                                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-400/15 text-lg">
+                                      !
+                                    </span>
+
+                                    <div>
+                                      <p className="text-xs font-black uppercase tracking-[0.15em] text-amber-300">
+                                        Verification
+                                      </p>
+
+                                      <p className="text-sm font-bold text-white">
+                                        Payment needs review
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <p className="mt-3 text-sm leading-5 text-slate-400">
+                                    Check the transaction
+                                    reference and amount
+                                    before verifying this
+                                    payment.
+                                  </p>
+
+                                  <div className="mt-5 space-y-2">
+
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        processing ||
+                                        !proofId
+                                      }
+                                      onClick={() =>
+                                        void handlePaymentAction(
+                                          proof,
+                                          "confirm",
+                                        )
+                                      }
+                                      className="w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-black text-slate-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {processing
+                                        ? "Processing..."
+                                        : "✓ Verify Payment"}
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        processing ||
+                                        !proofId
+                                      }
+                                      onClick={() =>
+                                        void handlePaymentAction(
+                                          proof,
+                                          "reject",
+                                        )
+                                      }
+                                      className="w-full rounded-xl border border-red-400/30 px-4 py-3 text-sm font-bold text-red-300 transition hover:bg-red-400/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      {processing
+                                        ? "Processing..."
+                                        : "Reject Payment"}
+                                    </button>
+
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="w-full shrink-0 rounded-2xl border border-white/10 bg-slate-950/70 p-5 lg:w-64">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Verification
+                                  </p>
+
+                                  <div className="mt-3">
+                                    <StatusBadge
+                                      status={
+                                        status
+                                      }
+                                    />
+                                  </div>
+
+                                  <p className="mt-3 text-sm text-slate-400">
+                                    This payment proof has
+                                    already been processed.
+                                  </p>
                                 </div>
                               )}
+
                             </div>
                           </div>
                         );
                       },
                     )}
+
                   </div>
                 )}
               </div>
             )}
+
           </div>
         </section>
       </div>
@@ -1139,7 +1533,105 @@ export default function AdminDashboardPage() {
   );
 }
 
+/* ---------- HELPERS ---------- */
+
+function isValidUUID(
+  value: string,
+): boolean {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  return uuidRegex.test(value);
+}
+
+function getApiErrorMessage(
+  body: ApiEnvelope<unknown>,
+  status: number,
+): string {
+  if (
+    body?.error?.message
+  ) {
+    return body.error.message;
+  }
+
+  if (Array.isArray(body?.detail)) {
+    const messages = body.detail
+      .map((item) => {
+        if (
+          typeof item === "object" &&
+          item !== null &&
+          "msg" in item
+        ) {
+          const message =
+            (item as { msg?: unknown }).msg;
+
+          return typeof message === "string"
+            ? message
+            : null;
+        }
+
+        return null;
+      })
+      .filter(
+        (message): message is string =>
+          Boolean(message),
+      );
+
+    if (messages.length > 0) {
+      return messages.join(" ");
+    }
+  }
+
+  if (
+    typeof body?.detail === "string"
+  ) {
+    return body.detail;
+  }
+
+  return `Request failed with status ${status}.`;
+}
+
 function StatCard({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-5 ${
+        highlight
+          ? "border-amber-400/30 bg-amber-400/10"
+          : "border-white/10 bg-white/[0.04]"
+      }`}
+    >
+      <p
+        className={`text-sm ${
+          highlight
+            ? "text-amber-200"
+            : "text-slate-400"
+        }`}
+      >
+        {label}
+      </p>
+
+      <p
+        className={`mt-3 text-3xl font-bold ${
+          highlight
+            ? "text-amber-300"
+            : "text-white"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function InfoItem({
   label,
   value,
 }: {
@@ -1147,12 +1639,12 @@ function StatCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-      <p className="text-sm text-slate-400">
+    <div className="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
         {label}
       </p>
 
-      <p className="mt-3 text-3xl font-bold">
+      <p className="mt-1 break-all text-sm font-semibold text-slate-200">
         {value}
       </p>
     </div>
@@ -1162,31 +1654,43 @@ function StatCard({
 function StatusBadge({
   status,
 }: {
-  status: string;
+  status?: string | null;
 }) {
-  const normalized = status.toLowerCase();
+  const normalized =
+    status?.trim().toLowerCase() ||
+    "unknown";
 
   const isPositive =
     normalized === "open" ||
     normalized === "confirmed" ||
+    normalized === "verified" ||
+    normalized === "approved" ||
+    normalized === "paid" ||
     normalized === "completed";
 
   const isNegative =
     normalized === "closed" ||
     normalized === "rejected" ||
-    normalized === "cancelled";
+    normalized === "cancelled" ||
+    normalized === "canceled" ||
+    normalized === "failed";
+
+  const label = normalized.replace(
+    /_/g,
+    " ",
+  );
 
   return (
     <span
-      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+      className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${
         isPositive
           ? "bg-emerald-400/10 text-emerald-300"
           : isNegative
             ? "bg-red-400/10 text-red-300"
-            : "bg-slate-400/10 text-slate-400"
+            : "bg-amber-400/10 text-amber-300"
       }`}
     >
-      {status}
+      {label}
     </span>
   );
 }
@@ -1219,7 +1723,9 @@ function EmptyState({
   );
 }
 
-function formatDateTime(value: string) {
+function formatDateTime(
+  value: string,
+) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {

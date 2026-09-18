@@ -1,133 +1,138 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { getSchedules } from "@/lib/api";
-import type { ScheduleResponse } from "@/lib/api-types";
 
-function Icon({
-  name,
-  size = 22,
-}: {
-  name: "calendar" | "clock" | "location" | "arrow" | "check";
-  size?: number;
-}) {
-  const common = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 2,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-
-  if (name === "calendar") {
-    return (
-      <svg {...common}>
-        <rect x="3" y="4" width="18" height="17" rx="2" />
-        <path d="M16 2v4M8 2v4M3 10h18" />
-      </svg>
-    );
-  }
-
-  if (name === "clock") {
-    return (
-      <svg {...common}>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3 2" />
-      </svg>
-    );
-  }
-
-  if (name === "location") {
-    return (
-      <svg {...common}>
-        <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0z" />
-        <circle cx="12" cy="10" r="2.5" />
-      </svg>
-    );
-  }
-
-  if (name === "check") {
-    return (
-      <svg {...common}>
-        <path d="m5 12 4 4L19 6" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg {...common}>
-      <path d="M5 12h14" />
-      <path d="m13 6 6 6-6 6" />
-    </svg>
-  );
-}
-
-const STEPS = [
-  "Select Schedule",
-  "Choose Seats",
-  "Passenger Details",
-  "Payment",
-  "Confirmation",
-];
+type ScheduleResponse = {
+  schedule_instance_id: string;
+  route_id: string;
+  route_name: string;
+  travel_date: string;
+  timing_slot: string;
+  status: string;
+  total_seats: number;
+  available_seats: number;
+};
 
 export default function ScheduleSelector() {
-  const router = useRouter();
-
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [loading, setLoading] = useState(false);
   const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const availableTimes = useMemo(() => {
-    return Array.from(
-      new Set(schedules.map((schedule) => schedule.timing_slot))
-    ).sort();
-  }, [schedules]);
-
-  const selectedSchedule = useMemo(() => {
-    if (!date || !time) return null;
-
-    return (
-      schedules.find(
-        (schedule) =>
-          schedule.travel_date === date &&
-          schedule.timing_slot === time
-      ) || null
-    );
-  }, [date, time, schedules]);
-
+  /*
+   * Format backend time such as:
+   * 09:00 -> 09:00 am
+   * 17:30 -> 05:30 pm
+   */
   function formatTime(value: string) {
-    const [hours, minutes] = value.split(":").map(Number);
+    if (!value) return "";
 
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    const [hoursString, minutesString] = value.split(":");
+
+    const hours = Number(hoursString);
+    const minutes = minutesString ?? "00";
+
+    if (Number.isNaN(hours)) {
       return value;
     }
 
-    const suffix = hours >= 12 ? "pm" : "am";
-    const displayHour = hours % 12 || 12;
+    const period = hours >= 12 ? "pm" : "am";
+    const displayHours = hours % 12 || 12;
 
-    return `${String(displayHour).padStart(2, "0")}:${String(
-      minutes
-    ).padStart(2, "0")} ${suffix}`;
+    return `${String(displayHours).padStart(2, "0")}:${minutes} ${period}`;
   }
 
-  async function handleSearch() {
-    setError("");
+  /*
+   * Convert selected time back to a normalized HH:MM value.
+   * This allows the component to work whether the input gives:
+   * 09:00
+   * 09:00 am
+   * 9:00 am
+   */
+  function normalizeTime(value: string) {
+    if (!value) return "";
 
-    if (!date) {
-      setError("Please select your travel date.");
+    const cleaned = value.trim().toLowerCase();
+
+    const amPmMatch = cleaned.match(
+      /^(\d{1,2}):(\d{2})\s*(am|pm)$/
+    );
+
+    if (amPmMatch) {
+      let hours = Number(amPmMatch[1]);
+      const minutes = amPmMatch[2];
+      const period = amPmMatch[3];
+
+      if (period === "pm" && hours !== 12) {
+        hours += 12;
+      }
+
+      if (period === "am" && hours === 12) {
+        hours = 0;
+      }
+
+      return `${String(hours).padStart(2, "0")}:${minutes}`;
+    }
+
+    const twentyFourHourMatch = cleaned.match(
+      /^(\d{1,2}):(\d{2})$/
+    );
+
+    if (twentyFourHourMatch) {
+      return `${String(Number(twentyFourHourMatch[1])).padStart(
+        2,
+        "0"
+      )}:${twentyFourHourMatch[2]}`;
+    }
+
+    return value;
+  }
+
+  /*
+   * Keep unique departure times.
+   */
+  const availableTimes = useMemo(() => {
+    const unique = Array.from(
+      new Set(
+        schedules
+          .map((schedule) => schedule.timing_slot)
+          .filter(Boolean)
+      )
+    );
+
+    return unique;
+  }, [schedules]);
+
+  /*
+   * Load today's date as default.
+   */
+  useEffect(() => {
+    const today = new Date();
+
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    setDate(`${year}-${month}-${day}`);
+  }, []);
+
+  /*
+   * Search schedules from backend.
+   */
+  async function loadSchedules(selectedDate: string) {
+    if (!selectedDate) {
+      setSchedules([]);
+      setTime("");
       return;
     }
 
     setLoading(true);
+    setError("");
 
     try {
-      const scheduleData = await getSchedules(date);
+      const scheduleData = await getSchedules(selectedDate);
 
       if (!scheduleData || scheduleData.length === 0) {
         setSchedules([]);
@@ -138,539 +143,407 @@ export default function ScheduleSelector() {
 
       setSchedules(scheduleData);
 
-      const matchingSchedule = time
-        ? scheduleData.find(
-            (schedule) => schedule.timing_slot === time
-          )
-        : null;
+      /*
+       * Keep currently selected time if it exists.
+       * Otherwise select the first available schedule.
+       */
+      const currentNormalized = normalizeTime(time);
 
-      const scheduleToUse =
-        matchingSchedule ?? scheduleData[0];
-
-      setTime(scheduleToUse.timing_slot);
-
-      router.push(
-        `/booking?date=${encodeURIComponent(
-          date
-        )}&time=${encodeURIComponent(
-          scheduleToUse.timing_slot
-        )}&schedule=${encodeURIComponent(
-          scheduleToUse.schedule_instance_id
-        )}`
+      const matchingSchedule = scheduleData.find(
+        (schedule) =>
+          normalizeTime(schedule.timing_slot) === currentNormalized
       );
+
+      if (matchingSchedule) {
+        setTime(matchingSchedule.timing_slot);
+      } else {
+        setTime(scheduleData[0].timing_slot);
+      }
     } catch (requestError) {
       console.error("Failed to load schedules:", requestError);
-      setError("Unable to load schedules. Please try again.");
+
+      setSchedules([]);
+      setTime("");
+      setError(
+        "Unable to load schedules. Please check the backend and try again."
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  function handleDateChange(value: string) {
-    setDate(value);
-    setTime("");
-    setSchedules([]);
+  /*
+   * When date changes, search schedules for that date.
+   */
+  useEffect(() => {
+    if (!date) return;
+
+    loadSchedules(date);
+
+    // We intentionally only react to date changes here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date]);
+
+  /*
+   * Select a departure time.
+   */
+  function handleTimeChange(selectedTime: string) {
+    setTime(selectedTime);
     setError("");
   }
 
-  function handleTimeChange(value: string) {
-    setTime(value);
+  /*
+   * Search Buses / continue to booking.
+   *
+   * IMPORTANT:
+   * We do NOT use Next.js router here.
+   * We use browser navigation so the URL is guaranteed to change.
+   */
+  async function handleSearch() {
     setError("");
+
+    /*
+     * No date selected.
+     */
+    if (!date) {
+      setError("Please select your travel date.");
+      return;
+    }
+
+    /*
+     * If schedules are already loaded, navigate immediately.
+     */
+    if (schedules.length > 0) {
+      const selectedNormalized = normalizeTime(time);
+
+      const scheduleToUse =
+        schedules.find(
+          (schedule) =>
+            normalizeTime(schedule.timing_slot) ===
+            selectedNormalized
+        ) ?? schedules[0];
+
+      if (!scheduleToUse) {
+        setError("Please select an available schedule.");
+        return;
+      }
+
+      if (!scheduleToUse.schedule_instance_id) {
+        console.error(
+          "Schedule is missing schedule_instance_id:",
+          scheduleToUse
+        );
+
+        setError(
+          "This schedule is missing its booking ID. Please try again."
+        );
+
+        return;
+      }
+
+      const selectedTime = scheduleToUse.timing_slot;
+
+      const bookingUrl =
+        `/booking?date=${encodeURIComponent(date)}` +
+        `&time=${encodeURIComponent(selectedTime)}` +
+        `&schedule=${encodeURIComponent(
+          scheduleToUse.schedule_instance_id
+        )}`;
+
+      console.log("Opening booking URL:", bookingUrl);
+      console.log("Selected schedule:", scheduleToUse);
+
+      /*
+       * Hard browser navigation.
+       */
+      window.location.assign(bookingUrl);
+
+      return;
+    }
+
+    /*
+     * If schedules haven't loaded yet, load them first.
+     */
+    setLoading(true);
+
+    try {
+      const scheduleData = await getSchedules(date);
+
+      console.log("Schedules returned from backend:", scheduleData);
+
+      if (!scheduleData || scheduleData.length === 0) {
+        setSchedules([]);
+        setTime("");
+        setError("No schedules are available for this date.");
+        return;
+      }
+
+      setSchedules(scheduleData);
+
+      const selectedNormalized = normalizeTime(time);
+
+      const scheduleToUse =
+        scheduleData.find(
+          (schedule) =>
+            normalizeTime(schedule.timing_slot) ===
+            selectedNormalized
+        ) ?? scheduleData[0];
+
+      if (!scheduleToUse?.schedule_instance_id) {
+        setError(
+          "The selected schedule is missing its booking ID."
+        );
+        return;
+      }
+
+      setTime(scheduleToUse.timing_slot);
+
+      const bookingUrl =
+        `/booking?date=${encodeURIComponent(date)}` +
+        `&time=${encodeURIComponent(scheduleToUse.timing_slot)}` +
+        `&schedule=${encodeURIComponent(
+          scheduleToUse.schedule_instance_id
+        )}`;
+
+      console.log("Opening booking URL:", bookingUrl);
+
+      window.location.assign(bookingUrl);
+    } catch (requestError) {
+      console.error("Failed to search buses:", requestError);
+
+      setError(
+        "Unable to search buses. Please check the backend and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <section className="relative z-40 px-4 sm:px-6 lg:px-10">
-      <div className="mx-auto max-w-[1320px]">
-        <div
-          className="
-            overflow-hidden
-            rounded-[26px]
-            border border-[#e3e8e4]
-            bg-white
-            shadow-[0_18px_50px_rgba(15,55,40,0.10)]
-          "
-        >
-          {/* STEPS */}
-          <div className="border-b border-[#edf1ee] bg-white px-3 py-3 sm:px-5 lg:px-7">
-            <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 lg:gap-3">
-              {STEPS.map((step, index) => {
-                const active = index === 0;
+    <section className="w-full">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.1fr_1.1fr_1.1fr_0.85fr]">
+        {/* FROM */}
+        <div className="rounded-[28px] border border-[#dfe7e2] bg-white p-7 shadow-sm">
+          <p className="mb-4 text-sm font-bold uppercase tracking-[0.22em] text-[#80918d]">
+            From
+          </p>
 
-                return (
-                  <div
-                    key={step}
-                    className={`
-                      flex min-w-0 items-center gap-2
-                      rounded-[15px]
-                      px-2 py-2
-                      sm:px-3 sm:py-2.5
-                      transition-all duration-200
-                      ${
-                        active
-                          ? "bg-[#007456] text-white shadow-[0_7px_18px_rgba(0,116,86,0.16)]"
-                          : "bg-transparent text-[#69756f]"
-                      }
-                    `}
-                  >
-                    <div
-                      className={`
-                        flex h-8 w-8 shrink-0 items-center justify-center
-                        rounded-full
-                        text-[12px] font-extrabold
-                        sm:h-9 sm:w-9 sm:text-[13px]
-                        ${
-                          active
-                            ? "bg-white text-[#007456]"
-                            : "bg-[#edf1ee] text-[#68756f]"
-                        }
-                      `}
-                    >
-                      {index + 1}
-                    </div>
-
-                    <div className="hidden min-w-0 sm:block">
-                      <p
-                        className={`
-                          truncate text-[11px] font-extrabold
-                          lg:text-[12px]
-                          ${
-                            active
-                              ? "text-white"
-                              : "text-[#53615b]"
-                          }
-                        `}
-                      >
-                        {step}
-                      </p>
-
-                      <p
-                        className={`
-                          mt-0.5 truncate text-[9px] font-medium
-                          lg:text-[10px]
-                          ${
-                            active
-                              ? "text-white/70"
-                              : "text-[#9aa49f]"
-                          }
-                        `}
-                      >
-                        {index === 0
-                          ? "Find your schedule"
-                          : index === 1
-                          ? "Pick your seat"
-                          : index === 2
-                          ? "Your information"
-                          : index === 3
-                          ? "Payment proof"
-                          : "Booking complete"}
-                      </p>
-                    </div>
-
-                    <span
-                      className={`
-                        text-[9px] font-extrabold sm:hidden
-                        ${
-                          active
-                            ? "text-white"
-                            : "text-[#69766f]"
-                        }
-                      `}
-                    >
-                      {index === 0 ? "Schedule" : step}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* SEARCH AREA */}
-          <div className="p-4 sm:p-5 lg:p-6">
-            <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_190px]">
-              {/* FROM */}
-              <div
-                className="
-                  group
-                  rounded-[18px]
-                  border border-[#e1e7e2]
-                  bg-[#fbfcfa]
-                  px-5 py-4
-                  transition-all duration-200
-                  hover:-translate-y-0.5
-                  hover:border-[#b5d5c4]
-                  hover:bg-white
-                  hover:shadow-[0_8px_20px_rgba(20,70,48,0.05)]
-                "
+          <div className="flex items-center gap-5">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#e8f5ef]">
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#007b5e"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <p
-                  className="
-                    text-[10px]
-                    font-extrabold
-                    uppercase
-                    tracking-[0.18em]
-                    text-[#8a9690]
-                  "
-                >
-                  From
-                </p>
-
-                <div className="mt-2.5 flex items-center gap-3">
-                  <div
-                    className="
-                      flex h-10 w-10 shrink-0
-                      items-center justify-center
-                      rounded-xl
-                      bg-[#e8f5ee]
-                      text-[#007456]
-                      transition-all duration-200
-                      group-hover:bg-[#007456]
-                      group-hover:text-white
-                    "
-                  >
-                    <Icon name="location" size={20} />
-                  </div>
-
-                  <div className="min-w-0">
-                    <p
-                      className="
-                        text-[16px]
-                        font-extrabold
-                        tracking-[-0.025em]
-                        text-[#172720]
-                      "
-                    >
-                      Bahawalpur
-                    </p>
-
-                    <p
-                      className="
-                        mt-0.5
-                        text-[11px]
-                        font-medium
-                        tracking-[0.01em]
-                        text-[#7d8983]
-                      "
-                    >
-                      TDCP Bus Terminal
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* DATE */}
-              <label
-                className="
-                  group
-                  cursor-pointer
-                  rounded-[18px]
-                  border border-[#e1e7e2]
-                  bg-[#fbfcfa]
-                  px-5 py-4
-                  transition-all duration-200
-                  hover:-translate-y-0.5
-                  hover:border-[#b5d5c4]
-                  hover:bg-white
-                  hover:shadow-[0_8px_20px_rgba(20,70,48,0.05)]
-                  focus-within:border-[#86bda0]
-                  focus-within:bg-white
-                  focus-within:shadow-[0_8px_20px_rgba(20,70,48,0.06)]
-                "
-              >
-                <span
-                  className="
-                    text-[10px]
-                    font-extrabold
-                    uppercase
-                    tracking-[0.18em]
-                    text-[#8a9690]
-                  "
-                >
-                  Travel Date
-                </span>
-
-                <div className="mt-2.5 flex items-center gap-3">
-                  <div
-                    className="
-                      flex h-10 w-10 shrink-0
-                      items-center justify-center
-                      rounded-xl
-                      bg-[#e8f5ee]
-                      text-[#007456]
-                      transition-all duration-200
-                      group-focus-within:bg-[#007456]
-                      group-focus-within:text-white
-                    "
-                  >
-                    <Icon name="calendar" size={20} />
-                  </div>
-
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(event) =>
-                      handleDateChange(event.target.value)
-                    }
-                    className="
-                      min-w-0
-                      w-full
-                      cursor-pointer
-                      bg-transparent
-                      text-[15px]
-                      font-extrabold
-                      tracking-[-0.01em]
-                      text-[#172720]
-                      outline-none
-                    "
-                  />
-                </div>
-              </label>
-
-              {/* TIME */}
-              <label
-                className="
-                  group
-                  cursor-pointer
-                  rounded-[18px]
-                  border border-[#e1e7e2]
-                  bg-[#fbfcfa]
-                  px-5 py-4
-                  transition-all duration-200
-                  hover:-translate-y-0.5
-                  hover:border-[#b5d5c4]
-                  hover:bg-white
-                  hover:shadow-[0_8px_20px_rgba(20,70,48,0.05)]
-                  focus-within:border-[#86bda0]
-                  focus-within:bg-white
-                  focus-within:shadow-[0_8px_20px_rgba(20,70,48,0.06)]
-                "
-              >
-                <span
-                  className="
-                    text-[10px]
-                    font-extrabold
-                    uppercase
-                    tracking-[0.18em]
-                    text-[#8a9690]
-                  "
-                >
-                  Departure Time
-                </span>
-
-                <div className="mt-2.5 flex items-center gap-3">
-                  <div
-                    className="
-                      flex h-10 w-10 shrink-0
-                      items-center justify-center
-                      rounded-xl
-                      bg-[#e8f5ee]
-                      text-[#007456]
-                      transition-all duration-200
-                      group-focus-within:bg-[#007456]
-                      group-focus-within:text-white
-                    "
-                  >
-                    <Icon name="clock" size={20} />
-                  </div>
-
-                  <input
-                    type="time"
-                    value={time}
-                    list="available-departure-times"
-                    onChange={(event) =>
-                      handleTimeChange(event.target.value)
-                    }
-                    className="
-                      min-w-0
-                      w-full
-                      cursor-pointer
-                      bg-transparent
-                      text-[15px]
-                      font-extrabold
-                      tracking-[-0.01em]
-                      text-[#172720]
-                      outline-none
-                    "
-                  />
-
-                  <datalist id="available-departure-times">
-                    {availableTimes.map((availableTime) => (
-                      <option
-                        key={availableTime}
-                        value={availableTime}
-                      >
-                        {formatTime(availableTime)}
-                      </option>
-                    ))}
-                  </datalist>
-                </div>
-              </label>
-
-              {/* SEARCH BUTTON */}
-              <button
-                type="button"
-                onClick={handleSearch}
-                disabled={loading}
-                className="
-                  group
-                  relative
-                  min-h-[88px]
-                  overflow-hidden
-                  rounded-[18px]
-                  bg-[#007456]
-                  px-6
-                  text-white
-                  shadow-[0_12px_28px_rgba(0,116,86,0.20)]
-                  transition-all
-                  duration-200
-                  hover:-translate-y-0.5
-                  hover:bg-[#00694e]
-                  hover:shadow-[0_17px_34px_rgba(0,116,86,0.25)]
-                  active:translate-y-0
-                  disabled:cursor-not-allowed
-                  disabled:opacity-60
-                "
-              >
-                <span
-                  className="
-                    pointer-events-none
-                    absolute
-                    -right-8
-                    -top-10
-                    h-24
-                    w-24
-                    rounded-full
-                    bg-white/10
-                    blur-2xl
-                    transition-transform
-                    duration-500
-                    group-hover:scale-150
-                  "
-                />
-
-                <span className="relative flex items-center justify-center gap-3">
-                  <span
-                    className="
-                      text-[14px]
-                      font-extrabold
-                      tracking-[-0.01em]
-                    "
-                  >
-                    {loading ? "Searching..." : "Search Buses"}
-                  </span>
-
-                  {!loading && (
-                    <span
-                      className="
-                        flex h-8 w-8
-                        items-center justify-center
-                        rounded-full
-                        border border-white/15
-                        bg-white/10
-                        transition-all duration-200
-                        group-hover:translate-x-1
-                        group-hover:bg-white/20
-                      "
-                    >
-                      <Icon name="arrow" size={17} />
-                    </span>
-                  )}
-                </span>
-              </button>
+                <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
             </div>
 
-            {/* AVAILABLE TIMES */}
-            {availableTimes.length > 0 && !error && (
-              <div className="mt-4">
-                <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.15em] text-[#8a9690]">
-                  Available departure times
-                </p>
+            <div>
+              <h3 className="text-xl font-extrabold text-[#10231f]">
+                Bahawalpur
+              </h3>
 
-                <div className="flex flex-wrap gap-2">
-                  {availableTimes.map((availableTime) => {
-                    const active = availableTime === time;
-
-                    return (
-                      <button
-                        key={availableTime}
-                        type="button"
-                        onClick={() => handleTimeChange(availableTime)}
-                        className={`
-                          rounded-full
-                          border
-                          px-3.5
-                          py-2
-                          text-xs
-                          font-extrabold
-                          transition-all
-                          ${
-                            active
-                              ? "border-[#007456] bg-[#007456] text-white"
-                              : "border-[#d7e5dc] bg-[#f5faf7] text-[#007456] hover:border-[#007456] hover:bg-[#e8f5ee]"
-                          }
-                        `}
-                      >
-                        {formatTime(availableTime)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ERROR */}
-            {error && (
-              <div
-                className="
-                  mt-4
-                  rounded-[14px]
-                  border border-red-100
-                  bg-red-50
-                  px-4 py-3
-                  text-xs
-                  font-semibold
-                  text-red-600
-                "
-              >
-                {error}
-              </div>
-            )}
-
-            {/* SELECTED SCHEDULE */}
-            {selectedSchedule && !error && (
-              <div
-                className="
-                  mt-4
-                  flex items-center gap-3
-                  rounded-[14px]
-                  border border-[#d7e9dd]
-                  bg-[#f1faf5]
-                  px-4 py-3
-                "
-              >
-                <div
-                  className="
-                    flex h-8 w-8 shrink-0
-                    items-center justify-center
-                    rounded-full
-                    bg-[#007456]
-                    text-white
-                    shadow-sm
-                  "
-                >
-                  <Icon name="check" size={16} />
-                </div>
-
-                <p className="text-xs font-semibold text-[#52625a]">
-                  Schedule available for{" "}
-                  <span className="font-extrabold text-[#007456]">
-                    {formatTime(selectedSchedule.timing_slot)}
-                  </span>
-                </p>
-              </div>
-            )}
+              <p className="mt-1 text-sm text-[#73817d]">
+                TDCP Bus Terminal
+              </p>
+            </div>
           </div>
         </div>
+
+        {/* TRAVEL DATE */}
+        <div className="rounded-[28px] border border-[#dfe7e2] bg-white p-7 shadow-sm">
+          <label
+            htmlFor="travel-date"
+            className="mb-4 block text-sm font-bold uppercase tracking-[0.22em] text-[#80918d]"
+          >
+            Travel Date
+          </label>
+
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#e8f5ef]">
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#007b5e"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect
+                  x="3"
+                  y="4"
+                  width="18"
+                  height="18"
+                  rx="2"
+                />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </div>
+
+            <input
+              id="travel-date"
+              type="date"
+              value={date}
+              onChange={(event) => {
+                setDate(event.target.value);
+                setError("");
+              }}
+              className="min-w-0 flex-1 bg-transparent text-lg font-extrabold text-[#10231f] outline-none"
+            />
+          </div>
+        </div>
+
+        {/* DEPARTURE TIME */}
+        <div className="rounded-[28px] border border-[#dfe7e2] bg-white p-7 shadow-sm">
+          <label
+            htmlFor="departure-time"
+            className="mb-4 block text-sm font-bold uppercase tracking-[0.22em] text-[#80918d]"
+          >
+            Departure Time
+          </label>
+
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#e8f5ef]">
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#007b5e"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12 7 12 12 15 14" />
+              </svg>
+            </div>
+
+            <select
+              id="departure-time"
+              value={time}
+              onChange={(event) =>
+                handleTimeChange(event.target.value)
+              }
+              className="min-w-0 flex-1 appearance-none bg-transparent text-lg font-extrabold text-[#10231f] outline-none"
+              disabled={loading || availableTimes.length === 0}
+            >
+              {availableTimes.length === 0 ? (
+                <option value="">
+                  {loading
+                    ? "Loading..."
+                    : "No time available"}
+                </option>
+              ) : (
+                availableTimes.map((availableTime) => (
+                  <option
+                    key={availableTime}
+                    value={availableTime}
+                  >
+                    {formatTime(availableTime)}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+
+        {/* SEARCH BUTTON */}
+        <button
+          type="button"
+          onClick={handleSearch}
+          disabled={loading}
+          className="group min-h-[160px] rounded-[28px] bg-[#007b5e] px-8 py-6 text-left text-white shadow-[0_18px_35px_rgba(0,123,94,0.18)] transition hover:bg-[#00684f] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <div className="flex h-full items-center justify-between gap-4">
+            <span className="text-xl font-extrabold leading-8">
+              {loading ? (
+                "Loading..."
+              ) : (
+                <>
+                  Search
+                  <br />
+                  Buses
+                </>
+              )}
+            </span>
+
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-2xl transition group-hover:translate-x-1">
+              →
+            </span>
+          </div>
+        </button>
       </div>
+
+      {/* AVAILABLE TIMES */}
+      {availableTimes.length > 0 && (
+        <div className="mt-7">
+          <p className="mb-4 text-sm font-bold uppercase tracking-[0.22em] text-[#80918d]">
+            Available Departure Times
+          </p>
+
+          <div className="flex flex-wrap gap-3">
+            {availableTimes.map((availableTime) => {
+              const isSelected =
+                normalizeTime(time) ===
+                normalizeTime(availableTime);
+
+              return (
+                <button
+                  key={availableTime}
+                  type="button"
+                  onClick={() =>
+                    handleTimeChange(availableTime)
+                  }
+                  className={`rounded-full px-6 py-3 text-sm font-extrabold transition ${
+                    isSelected
+                      ? "bg-[#007b5e] text-white shadow-sm"
+                      : "border border-[#dfe7e2] bg-white text-[#38504a] hover:border-[#007b5e] hover:text-[#007b5e]"
+                  }`}
+                >
+                  {formatTime(availableTime)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* STATUS */}
+      {schedules.length > 0 && time && (
+        <div className="mt-6 rounded-2xl border border-[#cfe5d9] bg-[#f0faf5] px-6 py-5">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#007b5e] text-xl text-white">
+              ✓
+            </div>
+
+            <p className="text-base font-semibold text-[#52635e]">
+              Schedule available for{" "}
+              <span className="font-extrabold text-[#007b5e]">
+                {formatTime(time)}
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ERROR */}
+      {error && (
+        <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      )}
     </section>
   );
 }

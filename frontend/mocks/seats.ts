@@ -1,0 +1,130 @@
+import type { ScheduleSeatsResponse } from "@/lib/api-types";
+
+export const MOCK_SCHEDULE_SEATS: ScheduleSeatsResponse = {
+  schedule_instance_id: "schedule-001",
+  travel_date: "2026-09-15",
+  timing_slot: "09:00",
+  status: "open",
+  seats: [
+    {
+      seat_id: "seat-001",
+      seat_number: 1,
+      deck: "upper",
+      status: "available",
+    },
+    {
+      seat_id: "seat-002",
+      seat_number: 2,
+      deck: "upper",
+      status: "available",
+    },
+    {
+      seat_id: "seat-003",
+      seat_number: 3,
+      deck: "upper",
+      status: "held",
+    },
+    {
+      seat_id: "seat-004",
+      seat_number: 4,
+      deck: "upper",
+      status: "booked",
+    },
+    {
+      seat_id: "seat-005",
+      seat_number: 5,
+      deck: "upper",
+      status: "reserved",
+    },
+    {
+      seat_id: "seat-006",
+      seat_number: 6,
+      deck: "upper",
+      status: "available",
+    },
+    {
+      seat_id: "seat-007",
+      seat_number: 7,
+      deck: "upper",
+      status: "available",
+    },
+    {
+      seat_id: "seat-008",
+      seat_number: 8,
+      deck: "upper",
+      status: "available",
+    },
+    {
+      seat_id: "seat-009",
+      seat_number: 9,
+      deck: "upper",
+      status: "booked",
+    },
+    {
+      seat_id: "seat-010",
+      seat_number: 10,
+      deck: "upper",
+      status: "available",
+    },
+    {
+      seat_id: "seat-011",
+      seat_number: 1,
+      deck: "lower",
+      status: "available",
+    },
+    {
+      seat_id: "seat-012",
+      seat_number: 2,
+      deck: "lower",
+      status: "available",
+    },
+    {
+      seat_id: "seat-013",
+      seat_number: 3,
+      deck: "lower",
+      status: "booked",
+    },
+    {
+      seat_id: "seat-014",
+      seat_number: 4,
+      deck: "lower",
+      status: "held",
+    },
+    {
+      seat_id: "seat-015",
+      seat_number: 5,
+      deck: "lower",
+      status: "reserved",
+    },
+    {
+      seat_id: "seat-016",
+      seat_number: 6,
+      deck: "lower",
+      status: "available",
+    },
+    {
+      seat_id: "seat-017",
+      seat_number: 7,
+      deck: "lower",
+      status: "available",
+    },
+    {
+      seat_id: "seat-018",
+      seat_number: 8,
+      deck: "lower",
+      status: "booked",
+    },
+    {
+      seat_id: "seat-019",
+      seat_number: 9,
+      deck: "lower",
+      status: "available",
+    },
+    {
+      seat_id: "seat-020",
+      seat_number: 10,
+      deck: "lower",
+      status: "available",
+    },
+  ],
+};

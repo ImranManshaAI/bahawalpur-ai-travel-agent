@@ -96,14 +96,13 @@ export interface PaymentMethod {
 }
 
 export interface PaymentProofResponse {
-  id: string;
+  payment_proof_id: string;
   booking_id: string;
-  payment_method_id: string;
-  transaction_reference: string;
-  amount_claimed: number;
+  screenshot_url: string;
   status: "pending_verification" | "confirmed" | "rejected";
-  review_notes?: string | null;
-  created_at: string;
+  payment_method_id: string | null;
+  transaction_reference: string | null;
+  amount_claimed: number | null;
 }
 
 export interface AdminLoginRequest {

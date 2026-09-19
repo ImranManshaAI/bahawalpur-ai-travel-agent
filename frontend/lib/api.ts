@@ -1,20 +1,36 @@
-﻿import {
-  mockCreateBooking,
-  mockGetBookingStatus,
-  mockGetScheduleSeats,
-  mockGetSchedules,
-  mockHoldSeats,
-} from "@/mocks/api";
-import type {
+﻿import type {
   BookingStatusResponse,
   CreateBookingRequest,
   CreateBookingResponse,
   HoldRequest,
   HoldResponse,
+  PaymentProofResponse,
+  ScheduleResponse,
+  ScheduleSeatsResponse,
 } from "@/lib/api-types";
+
+/* =========================
+   Admin Authentication
+========================= */
+
+export interface AdminLoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AdminLoginResponse {
+  token: string;
+  admin_id: string;
+  name: string;
+  email: string;
+}
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+/* =========================
+   Generic API Types
+========================= */
 
 export interface ApiErrorPayload {
   code: string;
@@ -46,6 +62,10 @@ export class ApiRequestError extends Error {
   }
 }
 
+/* =========================
+   URL Helper
+========================= */
+
 function buildUrl(path: string): string {
   if (!path.startsWith("/")) {
     throw new Error("API path must start with '/'.");
@@ -53,6 +73,10 @@ function buildUrl(path: string): string {
 
   return `${API_BASE_URL}${path}`;
 }
+
+/* =========================
+   Response Parser
+========================= */
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const contentType = response.headers.get("content-type") ?? "";
@@ -94,51 +118,169 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return body.data;
 }
 
+/* =========================
+   Admin Login
+========================= */
+
 /**
- * Mock implementation of:
+ * POST /admin/login
+ */
+export async function adminLogin(
+  request: AdminLoginRequest,
+): Promise<AdminLoginResponse> {
+  return apiFetch<AdminLoginResponse>("/admin/login", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+/* =========================
+   Public Schedules
+========================= */
+
+/**
  * GET /schedules?date=YYYY-MM-DD
  */
-export async function getSchedules(date: string) {
-  return mockGetSchedules(date);
+export async function getSchedules(
+  date: string,
+): Promise<ScheduleResponse[]> {
+  const params = new URLSearchParams({
+    date,
+  });
+
+  return apiFetch<ScheduleResponse[]>(
+    `/schedules?${params.toString()}`,
+  );
 }
 
 /**
- * Mock implementation of:
  * GET /schedules/{schedule_id}/seats
  */
-export async function getScheduleSeats(scheduleId: string) {
-  return mockGetScheduleSeats(scheduleId);
+export async function getScheduleSeats(
+  scheduleId: string,
+): Promise<ScheduleSeatsResponse> {
+  return apiFetch<ScheduleSeatsResponse>(
+    `/schedules/${encodeURIComponent(scheduleId)}/seats`,
+  );
 }
 
+/* =========================
+   Booking
+========================= */
+
 /**
- * Mock implementation of:
  * POST /bookings/hold
  */
 export async function holdSeats(
   request: HoldRequest,
 ): Promise<HoldResponse> {
-  return mockHoldSeats(request);
+  return apiFetch<HoldResponse>("/bookings/hold", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 /**
- * Mock implementation of:
  * POST /bookings
  */
 export async function createBooking(
   request: CreateBookingRequest,
 ): Promise<CreateBookingResponse> {
-  return mockCreateBooking(request);
+  return apiFetch<CreateBookingResponse>("/bookings", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 }
 
 /**
- * Mock implementation of:
- * GET /bookings/status?ref|phone|email
+ * GET /bookings/status?ref=...
  */
 export async function getBookingStatus(
   query: string,
 ): Promise<BookingStatusResponse> {
-  return mockGetBookingStatus(query);
+  const normalizedQuery = query.trim();
+
+  if (!normalizedQuery) {
+    throw new ApiRequestError(
+      "Booking reference, phone, or email is required.",
+      400,
+      "INVALID_BOOKING_QUERY",
+    );
+  }
+
+  const params = new URLSearchParams({
+    ref: normalizedQuery,
+  });
+
+  return apiFetch<BookingStatusResponse>(
+    `/bookings/status?${params.toString()}`,
+  );
 }
+
+/* =========================
+   Payment Proof
+========================= */
+
+/**
+ * POST /bookings/{booking_id}/payment-proof
+ *
+ * Backend expects multipart/form-data:
+ * - file: required
+ * - payment_method_id: optional
+ * - transaction_reference: optional
+ * - amount_claimed: optional
+ */
+export async function uploadPaymentProof(
+  bookingId: string,
+  file: File,
+  paymentMethodId?: string,
+  transactionReference?: string,
+  amountClaimed?: number,
+): Promise<PaymentProofResponse> {
+  if (!bookingId) {
+    throw new ApiRequestError(
+      "Booking ID is required.",
+      400,
+      "INVALID_BOOKING_ID",
+    );
+  }
+
+  if (!file) {
+    throw new ApiRequestError(
+      "Payment proof file is required.",
+      400,
+      "INVALID_PAYMENT_PROOF_FILE",
+    );
+  }
+
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  if (paymentMethodId) {
+    formData.append("payment_method_id", paymentMethodId);
+  }
+
+  if (transactionReference?.trim()) {
+    formData.append(
+      "transaction_reference",
+      transactionReference.trim(),
+    );
+  }
+
+  if (amountClaimed !== undefined) {
+    formData.append("amount_claimed", String(amountClaimed));
+  }
+
+  return apiUpload<PaymentProofResponse>(
+    `/bookings/${encodeURIComponent(bookingId)}/payment-proof`,
+    formData,
+  );
+}
+
+/* =========================
+   Generic API Request
+========================= */
 
 /**
  * Real backend API request helper.
@@ -159,8 +301,16 @@ export async function apiFetch<T>(
   return parseResponse<T>(response);
 }
 
+/* =========================
+   Multipart Upload
+========================= */
+
 /**
  * Multipart upload helper.
+ *
+ * Important:
+ * Do not set Content-Type manually here.
+ * The browser automatically adds the multipart boundary.
  */
 export async function apiUpload<T>(
   path: string,

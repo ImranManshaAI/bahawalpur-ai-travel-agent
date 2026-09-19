@@ -345,20 +345,12 @@ def test_plain_text_response_executes_no_tools(client, openrouter_sdk):
     ],
 )
 def test_out_of_scope_requests_do_not_execute_tools(client, openrouter_sdk, message):
-    openrouter_sdk.chat.completions.create.side_effect = [
-        _completion(
-            content=(
-                "I can only help with TDCP Double-Decker Bus bookings, "
-                "not that request."
-            )
-        )
-    ]
     with patch("app.services.agent.execute_tool", wraps=execute_tool) as spy:
         data = _assert_success(_chat(client, message))
     assert data["tool_trace"] == []
     spy.assert_not_called()
-    system = openrouter_sdk.chat.completions.create.call_args.kwargs["messages"][0]["content"]
-    assert "hotel" in system.lower()
+    openrouter_sdk.chat.completions.create.assert_not_called()
+    assert "double-decker" in data["reply"].lower()
 
 
 # ---------------------------------------------------------------------------

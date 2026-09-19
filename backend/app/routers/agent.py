@@ -1,7 +1,8 @@
 from fastapi import APIRouter
 
 from app.schemas.agent import AgentChatRequest, AgentChatResponse, AgentErrorResponse
-from app.services.agent import AssistantUnavailableError, run_chat
+from app.services.agent import AssistantUnavailableError
+from app.services.agent_hybrid import handle_chat
 
 router = APIRouter(prefix="/agent", tags=["Agent"])
 
@@ -32,7 +33,7 @@ def agent_chat(request: AgentChatRequest):
         history = [item.model_dump() for item in request.history]
 
     try:
-        result = run_chat(message=request.message, history=history)
+        result = handle_chat(message=request.message, history=history)
     except AssistantUnavailableError:
         return AgentChatResponse(data=None, error=_ASSISTANT_UNAVAILABLE)
     except ValueError:
